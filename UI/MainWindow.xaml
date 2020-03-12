@@ -27,7 +27,7 @@
 		<TextBox x:Name="dataEntry" Grid.Row="1" Grid.Column="1" MinWidth="50" MaxWidth="200" Margin="15, 0"/>
 		<Button x:Name="addButton" Grid.Row="1" Grid.Column="2" Content="Add" Margin="15, 0"/>
 		<Button x:Name="removeButton" Grid.Row="1" Grid.Column="3" Content="Remove" Margin="15, 0"/>
-		<Button x:Name="showButton" Grid.Row="1" Grid.Column="4" Content="Show" Margin="15,0,15,0" Height="20" Grid.RowSpan="2" VerticalAlignment="Top" Click="showButton_Click"/>
+		<Button x:Name="showButton" Grid.Row="1" Grid.Column="4" Content="Show" Margin="15,0,15,0" Height="20" Grid.RowSpan="2" VerticalAlignment="Top" Click="ShowButton_Click"/>
 
 		<TextBlock x:Name="dataDisplay" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Text=""/>
 

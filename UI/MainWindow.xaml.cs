@@ -15,7 +15,6 @@ namespace UI
 	public partial class MainWindow : Window
 	{
 
-        SqliteConnection connection;
 		bool created;
 
 		public MainWindow()
@@ -25,13 +24,13 @@ namespace UI
 			InitializeComponent();
 		}
 
-		private void showButton_Click(object sender, RoutedEventArgs e)
+		private void ShowButton_Click(object sender, RoutedEventArgs e)
 		{
-			connection = new SqliteConnection("Data Source=hello.db");
-			if (!File.Exists("./hello.db")) File.Create("hello.db");
+			SqliteConnection connection = new SqliteConnection("Data Source=hello.db");
+			if (!File.Exists("./hello.db")) File.Create("hello.db").Dispose();
 			connection.Open();
 			connection.Close();
-
+			connection.Dispose();
 		}
 	}
 }

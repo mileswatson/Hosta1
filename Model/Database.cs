@@ -7,6 +7,8 @@ namespace Model
 {
 	public class Database
 	{
+
+		int thing;
 		
 		public Database(string filename)
 		{

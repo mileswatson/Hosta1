@@ -7,5 +7,6 @@ namespace Model
 	class Model
 	{
 		Database db;
+		int testing;
 	}
 }

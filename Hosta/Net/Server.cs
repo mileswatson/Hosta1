@@ -11,9 +11,8 @@ namespace Hosta.Net
 {
 	public class Server
 	{
-
-		IPEndPoint localEndPoint;
-		Socket listener;
+		readonly IPEndPoint localEndPoint;
+		readonly Socket listener;
 
 		public Server(int port)
 		{

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Hosta.Exceptions;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -12,8 +13,7 @@ namespace Hosta.Net
 	/// </summary>
 	internal class RawMessenger
 	{
-
-		Socket socket;
+		readonly Socket socket;
 		const int MaxBuffer = 8388608; // max message size
 
 		public RawMessenger(Socket connectedSocket)
@@ -83,6 +83,10 @@ namespace Hosta.Net
 		/// <returns></returns>
 		public Task WriteStream(byte[] data)
 		{
+			if (data.Length > MaxBuffer)
+			{
+				throw new MessageTooLargeException("A message was too large to be sent!");
+			}
 			var tcs = new TaskCompletionSource<object>();
 			socket.BeginSend(data, 0, data.Length, 0, ar => { 
 				try

@@ -1,19 +1,20 @@
-﻿using System;
-using System.Text;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using System.IO;
+﻿using Hosta.Exceptions;
+using System;
 using System.Collections.Generic;
-
-using Hosta.Exceptions;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
 	internal class SecureMessenger
 	{
-		RawMessenger rawMessenger;
+		readonly RawMessenger rawMessenger;
 		byte[] sharedKey;
-		HashSet<byte[]> usedIVs;	// to ensure attackers cannot spam duplicate queries
+
+		// to ensure attackers cannot spam duplicate queries
+		readonly HashSet<byte[]> usedIVs = new HashSet<byte[]>();
 
 		public SecureMessenger(RawMessenger rawMessenger)
 		{
@@ -28,7 +29,7 @@ namespace Hosta.Net
 
 			// Reassembles the other users 
 			CngKey foreignPublicKey = CngKey.Import(await rawMessenger.Receive(), CngKeyBlobFormat.EccPublicBlob);
-			
+
 			// Uses sha256 by default
 			sharedKey = privateKey.DeriveKeyMaterial(foreignPublicKey);
 
@@ -36,41 +37,35 @@ namespace Hosta.Net
 			await sent;
 		}
 
+		/// <summary>
+		/// Asynchronously sends an encrypted message.
+		/// </summary>
+		/// <param name="data">The message to encrypt and send.</param>
+		/// <returns>An awaitable task.</returns>
 		public async Task Send(string data)
 		{
 			byte[] plainblob = Encoding.UTF8.GetBytes(data);
-			byte[] secureMessage = ConstructSecureMessage(plainblob);
+			byte[] secureMessage = ConstructSecurePackage(plainblob);
 			await rawMessenger.Send(secureMessage);
 		}
 
+		/// <summary>
+		/// Securely receives a message.
+		/// </summary>
+		/// <returns>An awaitable task that resolves to the decrypted message.</returns>
 		public async Task<string> Receive()
 		{
-			byte[] combined = await rawMessenger.Receive();
-			using (AesCng aes = new AesCng())
-			{
-				aes.Key = sharedKey;
-				Array.Copy(combined, 0, aes.IV, 0, 16);
-
-				byte[] cipherblob = new byte[combined.Length - 16];
-				Array.Copy(combined, 16, cipherblob, 0, cipherblob.Length);
-
-				using (MemoryStream plainstream = new MemoryStream())
-				using (CryptoStream cryptostream = new CryptoStream(plainstream, aes.CreateDecryptor(), CryptoStreamMode.Write))
-				{
-					cryptostream.Write(cipherblob, 0, cipherblob.Length);
-					cryptostream.Close();
-					return Encoding.UTF8.GetString(plainstream.ToArray());
-				}
-			}
+			byte[] package = await rawMessenger.Receive();
+			return Encoding.UTF8.GetString(OpenSecurePackage(package));
 		}
 
 		/// <summary>
 		/// Message will be constructed in the format:
 		/// 16B IV, ciphertext, 32B HMAC
 		/// </summary>
-		/// <param name="data">The data to send.</param>
+		/// <param name="plainblob">The data to secure.</param>
 		/// <returns>The secure message package.</returns>
-		byte[] ConstructSecureMessage(byte[] plainblob)
+		byte[] ConstructSecurePackage(byte[] plainblob)
 		{
 			byte[] package;
 			using (AesCng aes = new AesCng())
@@ -80,27 +75,25 @@ namespace Hosta.Net
 				{
 					aes.GenerateIV();
 				}
-				using (MemoryStream cipherstream = new MemoryStream())
-				using (CryptoStream encryptor = new CryptoStream(cipherstream,
-					aes.CreateEncryptor(), CryptoStreamMode.Write))
-				{
-					encryptor.Write(plainblob, 0, plainblob.Length);
-					encryptor.Close();
-					package = new byte[aes.IV.Length + cipherstream.Length + 32];
+				using MemoryStream cipherstream = new MemoryStream();
+				using CryptoStream encryptor = new CryptoStream(cipherstream,
+					aes.CreateEncryptor(), CryptoStreamMode.Write);
+				encryptor.Write(plainblob, 0, plainblob.Length);
+				encryptor.Close();
+				package = new byte[16 + cipherstream.Length + 32];
 
-					usedIVs.Add(aes.IV);
+				usedIVs.Add(aes.IV);
 
-					Array.Copy(aes.IV, 0, package, 0, aes.IV.Length);
-					Array.Copy(cipherstream.ToArray(), 0,
-						package, aes.IV.Length,
-						cipherstream.Length);
-				}
+				Array.Copy(aes.IV, 0, package, 0, 16);
+				Array.Copy(cipherstream.ToArray(), 0,
+					package, 16,
+					cipherstream.Length);
 			}
 			using (var hmac = new HMACSHA256(sharedKey))
 			{
 				Array.Copy(
-					hmac.ComputeHash(package, 0, package.Length-32), 0,
-					package, package.Length-32,
+					hmac.ComputeHash(package, 0, package.Length - 32), 0,
+					package, package.Length - 32,
 					32);
 			}
 			return package;
@@ -109,38 +102,44 @@ namespace Hosta.Net
 		/// <summary>
 		/// Deconstruct secure message, raises exceptions if unable to authenticate.
 		/// </summary>
-		/// <param name="combined"></param>
-		/// <returns></returns>
-		byte[] DeconstructSecureMessage(byte[] package)
+		/// <param name="package">The secure message package.</param>
+		/// <exception cref="DuplicatePackageException"/>
+		/// <exception cref="TamperedPackageException"/>
+		/// <returns>The package contents.</returns>
+		byte[] OpenSecurePackage(byte[] package)
 		{
+			byte[] IV = new byte[16];
+			Array.Copy(package, 0, IV, 0, 16);
+
+			if (usedIVs.Contains(IV))
+			{
+				throw new DuplicatePackageException("Duplicate IV received.");
+			}
 
 			using (var hmac = new HMACSHA256(sharedKey))
 			{
-
+				byte[] actualHMAC = hmac.ComputeHash(package, 0, package.Length - 32);
+				for (int i = 0, j = package.Length - 32; i < 32; i++, j++)
+				{
+					if (actualHMAC[i] != package[j])
+					{
+						throw new TamperedPackageException("HMAC does not match received package.");
+					}
+				}
 			}
 
-			using (var aes = new AesCng())
+			using var aes = new AesCng
 			{
-				aes.Key = sharedKey;
-				Array.Copy(package, 0, aes.IV, 0, aes.IV.Length);
+				Key = sharedKey,
+				IV = IV
+			};
 
-				if (usedIVs.Contains(aes.IV))
-				{
-					throw new TamperedMessageException();
-				}
-
-				byte[] cipherblob = new byte[package.Length - aes.IV.Length - 32];
-				Array.Copy(package, aes.IV.Length, cipherblob, aes.IV.Length, cipherblob.Length);
-
-				using (MemoryStream plainstream = new MemoryStream())
-				using (CryptoStream cryptostream = new CryptoStream(plainstream,
-					aes.CreateDecryptor(), CryptoStreamMode.Write))
-				{
-					cryptostream.Write(cipherblob, 0, cipherblob.Length);
-					cryptostream.Close();
-					return plainstream.ToArray();
-				}
-			}
+			using MemoryStream plainstream = new MemoryStream();
+			using CryptoStream cryptostream = new CryptoStream(plainstream,
+				aes.CreateDecryptor(), CryptoStreamMode.Write);
+			cryptostream.Write(package, 16, package.Length - 16 - 32);
+			cryptostream.Close();
+			return plainstream.ToArray();
 		}
 
 	}

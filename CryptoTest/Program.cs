@@ -31,9 +31,8 @@ public class Program
 		rng.GetBytes(hash);
 
 		Stopwatch stopwatch = new Stopwatch();
-		byte[] signature = new byte[0];
 		ECDsaCng asymmetricKey = new ECDsaCng(521);
-		signature = asymmetricKey.SignHash(hash);
+		byte[] signature = asymmetricKey.SignHash(hash);
 		stopwatch.Start();
 		for (int i = 0; i < numIterations; i++)
 		{
@@ -56,9 +55,8 @@ public class Program
 		rng.GetBytes(hash);
 
 		Stopwatch stopwatch = new Stopwatch();
-		byte[] signature = new byte[0];
 		RSA asymmetricKey = RSA.Create(3072);
-		signature = asymmetricKey.SignHash(hash, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+		byte[] signature = asymmetricKey.SignHash(hash, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
 		stopwatch.Start();
 		for (int i = 0; i < numIterations; i++)
 		{
@@ -77,8 +75,8 @@ public class Program
 public class Person
 {
 
-	private	ECDiffieHellmanCng localToken;
-	private ECDsaCng identity;
+	private readonly ECDiffieHellmanCng localToken;
+	private readonly ECDsaCng identity;
 
 	private byte[] sharedKey;
 	
@@ -86,8 +84,10 @@ public class Person
 	public Person()
 	{
 		localToken = new ECDiffieHellmanCng(521);
-		identity = new ECDsaCng(521);
-		identity.HashAlgorithm = CngAlgorithm.Sha256;
+		identity = new ECDsaCng(521)
+		{
+			HashAlgorithm = CngAlgorithm.Sha256
+		};
 	}
 
 	public void SendToken(Person p)
@@ -114,37 +114,32 @@ public class Person
 
 	public byte[] Encrypt(string plaintext)
 	{
-		using (AesCng aes = new AesCng())
+		using AesCng aes = new AesCng
 		{
-			aes.Key = sharedKey;
-			aes.IV = new byte[16];
+			Key = sharedKey,
+			IV = new byte[16]
+		};
 
-			using (MemoryStream cipherstream = new MemoryStream())
-			using (CryptoStream cryptostream = new CryptoStream(cipherstream, aes.CreateEncryptor(), CryptoStreamMode.Write))
-			{
-				byte[] plainblob = Encoding.UTF8.GetBytes(plaintext);
-				cryptostream.Write(plainblob, 0, plainblob.Length);
-				cryptostream.Close();
-				return cipherstream.ToArray();
-				
-			}
-		}
+		using MemoryStream cipherstream = new MemoryStream();
+		using CryptoStream cryptostream = new CryptoStream(cipherstream, aes.CreateEncryptor(), CryptoStreamMode.Write);
+		byte[] plainblob = Encoding.UTF8.GetBytes(plaintext);
+		cryptostream.Write(plainblob, 0, plainblob.Length);
+		cryptostream.Close();
+		return cipherstream.ToArray();
 	}
 
 	public string Decrypt(byte[] cipherblob)
 	{
-		using (AesCng aes = new AesCng())
+		using AesCng aes = new AesCng
 		{
-			aes.Key = sharedKey;
-			aes.IV = new byte[16];
-			using (MemoryStream plainstream = new MemoryStream())
-			using (CryptoStream cryptostream = new CryptoStream(plainstream, aes.CreateDecryptor(), CryptoStreamMode.Write))
-			{
-				cryptostream.Write(cipherblob, 0, cipherblob.Length);
-				cryptostream.Close();
-				return Encoding.UTF8.GetString(plainstream.ToArray());
-			}
-		}
+			Key = sharedKey,
+			IV = new byte[16]
+		};
+		using MemoryStream plainstream = new MemoryStream();
+		using CryptoStream cryptostream = new CryptoStream(plainstream, aes.CreateDecryptor(), CryptoStreamMode.Write);
+		cryptostream.Write(cipherblob, 0, cipherblob.Length);
+		cryptostream.Close();
+		return Encoding.UTF8.GetString(plainstream.ToArray());
 	}
 
 }

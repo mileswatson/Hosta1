@@ -7,8 +7,6 @@ namespace Model
 {
 	public class Database
 	{
-
-		int thing;
 		
 		public Database(string filename)
 		{
@@ -18,18 +16,19 @@ namespace Model
 				File.Create(filename);
 			}
 			
-			SqliteConnection conn = new SqliteConnection("Data Source=./Data/database.sqlite;Mode=ReadWriteCreate");
-			conn.Open();
-			SqliteCommand command = conn.CreateCommand();
-			command.CommandText = @"SELECT COUNT(name) FROM sqlite_master WHERE type = 'table' AND name = 'users';";
-			using (var reader = command.ExecuteReader())
+
+			using (var conn = new SqliteConnection("Data Source=./Data/database.sqlite;Mode=ReadWriteCreate"))
 			{
-				reader.Read();
-				if (reader.GetInt32(0) == 0) {
-					Debug.WriteLine("Not created");
-				}
+				conn.Open();
+				SqliteCommand command = conn.CreateCommand();
+				command.CommandText = @"CREATE TABLE IF NOT EXISTS users(
+					id TEXT PRIMARY KEY,
+					public_key TEXT NOT NULL UNIQUE,
+					ip TEXT
+				);";
+				command.ExecuteNonQuery();
+				Debug.WriteLine("Created.");
 			}
-			conn.Close();
 
 		}
 

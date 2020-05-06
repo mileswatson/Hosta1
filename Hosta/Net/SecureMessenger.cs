@@ -1,27 +1,31 @@
-﻿using Hosta.Exceptions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
+using Hosta.Exceptions;
+using Hosta.Tools;
+
 namespace Hosta.Net
 {
-	internal class SecureMessenger
+	public class SecureMessenger : IConversable
 	{
-		readonly RawMessenger rawMessenger;
+		readonly IConversable rawMessenger;
 		byte[] sharedKey;
 
 		// to ensure attackers cannot spam duplicate queries
-		readonly HashSet<byte[]> usedIVs = new HashSet<byte[]>();
+		readonly HashSet<byte[]> usedHMACs = new HashSet<byte[]>(new ByteArrayComparer());
 
-		public SecureMessenger(RawMessenger rawMessenger)
+		public SecureMessenger(IConversable rawMessenger)
 		{
 			this.rawMessenger = rawMessenger;
 		}
 
-		public async Task Secure()
+		public async Task Establish()
 		{
 			// Generates the local private key
 			ECDiffieHellmanCng privateKey = new ECDiffieHellmanCng(521);
@@ -42,22 +46,23 @@ namespace Hosta.Net
 		/// </summary>
 		/// <param name="data">The message to encrypt and send.</param>
 		/// <returns>An awaitable task.</returns>
-		public async Task Send(string data)
+		public Task Send(byte[] data)
 		{
-			byte[] plainblob = Encoding.UTF8.GetBytes(data);
-			byte[] secureMessage = ConstructSecurePackage(plainblob);
-			await rawMessenger.Send(secureMessage);
+			byte[] secureMessage = ConstructSecurePackage(data);
+			return rawMessenger.Send(secureMessage);
+		}
+
+		public async Task<byte[]> Receive()
+		{
+			byte[] package = await rawMessenger.Receive();
+			return OpenSecurePackage(package);
 		}
 
 		/// <summary>
 		/// Securely receives a message.
 		/// </summary>
 		/// <returns>An awaitable task that resolves to the decrypted message.</returns>
-		public async Task<string> Receive()
-		{
-			byte[] package = await rawMessenger.Receive();
-			return Encoding.UTF8.GetString(OpenSecurePackage(package));
-		}
+		
 
 		/// <summary>
 		/// Message will be constructed in the format:
@@ -67,35 +72,25 @@ namespace Hosta.Net
 		/// <returns>The secure message package.</returns>
 		byte[] ConstructSecurePackage(byte[] plainblob)
 		{
-			byte[] package;
-			using (AesCng aes = new AesCng())
-			{
-				aes.Key = sharedKey;
-				while (usedIVs.Contains(aes.IV))
-				{
-					aes.GenerateIV();
-				}
-				using MemoryStream cipherstream = new MemoryStream();
-				using CryptoStream encryptor = new CryptoStream(cipherstream,
-					aes.CreateEncryptor(), CryptoStreamMode.Write);
-				encryptor.Write(plainblob, 0, plainblob.Length);
-				encryptor.Close();
-				package = new byte[16 + cipherstream.Length + 32];
+			// Generate an IV
+			byte[] head = Crypto.SecureRandomBytes(Crypto.SYMMETRIC_IV_SIZE);
 
-				usedIVs.Add(aes.IV);
+			// Encrypt the plaintext
+			byte[] body = Crypto.Encrypt(plainblob, sharedKey, head);
 
-				Array.Copy(aes.IV, 0, package, 0, 16);
-				Array.Copy(cipherstream.ToArray(), 0,
-					package, 16,
-					cipherstream.Length);
-			}
-			using (var hmac = new HMACSHA256(sharedKey))
-			{
-				Array.Copy(
-					hmac.ComputeHash(package, 0, package.Length - 32), 0,
-					package, package.Length - 32,
-					32);
-			}
+			// Prepend the IV to the ciphertext
+			byte[] headAndBody = new byte[head.Length + body.Length];
+			Array.Copy(head, 0, headAndBody, 0, head.Length);
+			Array.Copy(body, 0, headAndBody, head.Length, body.Length);
+
+			// Calculate the HMAC of the first two parts
+			byte[] tail = Crypto.HMAC(headAndBody, sharedKey);
+
+			// Construct the final package
+			byte[] package = new byte[headAndBody.Length + tail.Length];
+			Array.Copy(headAndBody, 0, package, 0, headAndBody.Length);
+			Array.Copy(tail, 0, package, headAndBody.Length, tail.Length);
+
 			return package;
 		}
 
@@ -108,38 +103,53 @@ namespace Hosta.Net
 		/// <returns>The package contents.</returns>
 		byte[] OpenSecurePackage(byte[] package)
 		{
-			byte[] IV = new byte[16];
-			Array.Copy(package, 0, IV, 0, 16);
 
-			if (usedIVs.Contains(IV))
+			// Separate the tail from the rest of the package
+			byte[] headAndBody = new byte[package.Length - Crypto.HASH_SIZE];
+			Array.Copy(package, 0, headAndBody, 0, headAndBody.Length);
+				
+			byte[] tail = new byte[Crypto.HASH_SIZE];
+			Array.Copy(package, headAndBody.Length, tail, 0, tail.Length);
+
+			// Check that the HMAC has not been used before
+			if (usedHMACs.Contains(tail))
 			{
-				throw new DuplicatePackageException("Duplicate IV received.");
+				throw new DuplicatePackageException("Duplicate HMAC received.");
 			}
 
-			using (var hmac = new HMACSHA256(sharedKey))
+			// Verify the integrity of the message
+			byte[] actualHMAC = Crypto.HMAC(headAndBody, sharedKey);
+			if (!tail.SequenceEqual(actualHMAC))
 			{
-				byte[] actualHMAC = hmac.ComputeHash(package, 0, package.Length - 32);
-				for (int i = 0, j = package.Length - 32; i < 32; i++, j++)
-				{
-					if (actualHMAC[i] != package[j])
-					{
-						throw new TamperedPackageException("HMAC does not match received package.");
-					}
-				}
+				throw new TamperedPackageException("HMAC does not match received package.");
 			}
 
-			using var aes = new AesCng
-			{
-				Key = sharedKey,
-				IV = IV
-			};
+			// Separate the IV and ciphertext
+			byte[] head = new byte[Crypto.SYMMETRIC_IV_SIZE];
+			Array.Copy(headAndBody, 0, head, 0, head.Length);
 
-			using MemoryStream plainstream = new MemoryStream();
-			using CryptoStream cryptostream = new CryptoStream(plainstream,
-				aes.CreateDecryptor(), CryptoStreamMode.Write);
-			cryptostream.Write(package, 16, package.Length - 16 - 32);
-			cryptostream.Close();
-			return plainstream.ToArray();
+			byte[] body = new byte[headAndBody.Length - Crypto.SYMMETRIC_IV_SIZE];
+			Array.Copy(headAndBody, head.Length, body, 0, body.Length);
+
+			// Decrypt the ciphertext
+			byte[] plainblob = Crypto.Decrypt(body, sharedKey, head);
+
+			return plainblob;
+		}
+
+		class ByteArrayComparer : IEqualityComparer<byte[]>
+		{
+			public bool Equals(byte[] a, byte[] b)
+			{
+				if (a.Length != b.Length) return false;
+				for (int i = 0; i < a.Length; i++)
+					if (a[i] != b[i]) return false;
+				return true;
+			}
+			public int GetHashCode(byte[] data)
+			{
+				return BitConverter.ToInt32(data, 0);
+			}
 		}
 
 	}

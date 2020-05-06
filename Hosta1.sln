@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Model", "Model\Model.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoTest", "CryptoTest\CryptoTest.csproj", "{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hosta", "Hosta\Hosta.csproj", "{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosta", "Hosta\Hosta.csproj", "{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HostaTests", "HostaTests\HostaTests.csproj", "{C99E628F-AE65-46CA-98BB-C44AD850B165}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

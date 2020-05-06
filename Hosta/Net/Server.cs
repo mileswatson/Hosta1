@@ -62,7 +62,7 @@ namespace Hosta.Net
 				while (true)
 				{
 					Console.WriteLine("Waiting for a connection...");
-					RawMessenger messenger = await AcceptConnection();
+					StreamMessenger messenger = await AcceptConnection();
 
 				}
 			} catch (Exception e)
@@ -73,17 +73,17 @@ namespace Hosta.Net
 			Console.Read();
 		}
 
-		private Task<RawMessenger> AcceptConnection()
+		private Task<StreamMessenger> AcceptConnection()
 		{
-			var tcs = new TaskCompletionSource<RawMessenger>();
+			var tcs = new TaskCompletionSource<StreamMessenger>();
 
 			listener.BeginAccept(ar =>
 			{
 				try
 				{
 					var s = ar.AsyncState as Socket;
-
-					tcs.SetResult(new RawMessenger(s.EndAccept(ar)));
+					var socketStream = new SocketStream(s.EndAccept(ar));
+					tcs.SetResult(new StreamMessenger(socketStream));
 				}
 				catch (Exception e)
 				{

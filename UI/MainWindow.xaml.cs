@@ -15,8 +15,6 @@ namespace UI
 
 	public partial class MainWindow : Window
 	{
-
-		bool created;
 		Database db;
 
 		public MainWindow()

@@ -5,7 +5,13 @@ VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "View", "UI\View.csproj", "{44485F5F-850A-41A6-8059-FC16509CA022}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj", "{68A0A73A-20E6-449D-AF47-2A879F435EA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Model", "Model\Model.csproj", "{68A0A73A-20E6-449D-AF47-2A879F435EA2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoTest", "CryptoTest\CryptoTest.csproj", "{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosta", "Hosta\Hosta.csproj", "{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HostaTests", "HostaTests\HostaTests.csproj", "{C99E628F-AE65-46CA-98BB-C44AD850B165}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +27,18 @@ Global
 		{68A0A73A-20E6-449D-AF47-2A879F435EA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68A0A73A-20E6-449D-AF47-2A879F435EA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68A0A73A-20E6-449D-AF47-2A879F435EA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DB8C500-B18A-4DB3-AA2A-42B3BC0E4101}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10D04152-6CD0-49E0-9840-A72BD5BFC0AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C99E628F-AE65-46CA-98BB-C44AD850B165}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

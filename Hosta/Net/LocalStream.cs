@@ -1,26 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
-
+	// Allows asynchronous local stream communications.
 	public class LocalStream : IStreamable
 	{
-		LocalStream contact;
-		readonly Queue<byte> pendingBytes;
-		readonly Queue<Tuple<int, TaskCompletionSource<byte[]>>> pendingReaders;
-		
+		/// <summary>
+		/// The other LocalStream to write to and read from.
+		/// </summary>
+		private LocalStream contact;
 
+		/// <summary>
+		/// A queue of bytes to be read.
+		/// </summary>
+		private readonly Queue<byte> pendingBytes;
+
+		/// <summary>
+		/// A queue of waiting readers.
+		/// </summary>
+		private readonly Queue<Tuple<int, TaskCompletionSource<byte[]>>> pendingReaders;
+
+		/// <summary>
+		/// Initialises byte and reader queues.
+		/// </summary>
 		public LocalStream()
 		{
 			pendingBytes = new Queue<byte>();
 			pendingReaders = new Queue<Tuple<int, TaskCompletionSource<byte[]>>>();
 		}
 
+		/// <summary>
+		/// Connects to another LocalStream.
+		/// </summary>
+		/// <param name="contact">The other LocalStream to connect to.</param>
 		public void Connect(LocalStream contact)
 		{
 			this.contact = contact;
@@ -46,6 +60,9 @@ namespace Hosta.Net
 			return tcs.Task;
 		}
 
+		/// <summary>
+		/// Used to ensure that stream order is maintained.
+		/// </summary>
 		public void HandlePendingReaders()
 		{
 			lock (pendingReaders)
@@ -64,7 +81,5 @@ namespace Hosta.Net
 				}
 			}
 		}
-
-
 	}
 }

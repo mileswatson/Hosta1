@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Model
+﻿namespace Model
 {
-	class Model
+	internal class Model
 	{
-		Database db;
-		int testing;
+		private Database db;
+		private int testing;
 	}
 }

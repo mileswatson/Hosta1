@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Hosta.Net;
 
 namespace Hosta.Net
 {
@@ -18,15 +14,13 @@ namespace Hosta.Net
 			ls1.Connect(ls2);
 			ls2.Connect(ls1);
 
-			StreamMessenger ms1 = new StreamMessenger(ls1);
-			StreamMessenger ms2 = new StreamMessenger(ls2);
+			ConversationStreamer ms1 = new ConversationStreamer(ls1);
+			ConversationStreamer ms2 = new ConversationStreamer(ls2);
 
-			SecureMessenger sm1 = new SecureMessenger(ms1);
-			SecureMessenger sm2 = new SecureMessenger(ms2);
+			SecureConversation sm1 = new SecureConversation(ms1);
+			SecureConversation sm2 = new SecureConversation(ms2);
 
 			Task.WaitAll(sm1.Establish(), sm2.Establish());
-
-			
 
 			sm1.Send(Encode("From sm1 - 1"));
 			sm2.Send(Encode("From sm2 - 1"));
@@ -37,8 +31,6 @@ namespace Hosta.Net
 			sm1.Send(Encode("From sm1 - 2"));
 			sm2.Send(Encode("From sm2 - 2"));
 
-			
-
 			Task<byte[]> received21 = sm2.Receive();
 			Task<byte[]> received22 = sm2.Receive();
 
@@ -46,7 +38,6 @@ namespace Hosta.Net
 			Console.WriteLine(Decode(received12.Result));
 			Console.WriteLine(Decode(received21.Result));
 			Console.WriteLine(Decode(received22.Result));
-
 		}
 
 		public static byte[] Encode(string data)

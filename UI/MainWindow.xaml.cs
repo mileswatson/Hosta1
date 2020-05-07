@@ -1,10 +1,5 @@
-﻿using System;
+﻿using Model;
 using System.Windows;
-
-using Microsoft.Data.Sqlite;
-using System.Diagnostics;
-using System.IO;
-using Model;
 
 namespace UI
 {
@@ -12,15 +7,12 @@ namespace UI
 	/// Interaction logic for MainWindow.xaml
 	/// </summary>
 
-
 	public partial class MainWindow : Window
 	{
-		Database db;
+		private Database db;
 
 		public MainWindow()
 		{
-
-			
 			InitializeComponent();
 		}
 

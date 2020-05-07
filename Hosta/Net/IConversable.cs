@@ -1,14 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
+	/// <summary>
+	/// An interface that supports a simple asynchronous conversation using byte arrays.
+	/// </summary>
 	public interface IConversable
 	{
-		public Task Establish();
+		/// <summary>
+		/// Asynchronously sends a byte[].
+		/// </summary>
+		/// <param name="data">The data to send.</param>
+		/// <returns>An awaitable task.</returns>
 		public Task Send(byte[] data);
+
+		/// <summary>
+		/// Asynchronously receives a byte[].
+		/// </summary>
+		/// <returns>An awaitable task that resolves to the received message.</returns>
 		public Task<byte[]> Receive();
 	}
 }

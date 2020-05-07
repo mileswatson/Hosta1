@@ -1,38 +1,57 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-
-using Hosta.Exceptions;
+﻿using Hosta.Exceptions;
 using Hosta.Tools;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
-	public class SecureMessenger : IConversable
+	/// <summary>
+	/// Used to establish and send messages over an encrypted session.
+	/// </summary>
+	public class SecureConversation : IConversable
 	{
-		readonly IConversable rawMessenger;
-		byte[] sharedKey;
+		/// <summary>
+		/// The insecure conversation to talk over.
+		/// </summary>
+		private readonly IConversable insecureConversation;
 
-		// to ensure attackers cannot spam duplicate queries
-		readonly HashSet<byte[]> usedHMACs = new HashSet<byte[]>(new ByteArrayComparer());
+		/// <summary>
+		/// The shared AES and HMAC key.
+		/// </summary>
+		private byte[] sharedKey;
 
-		public SecureMessenger(IConversable rawMessenger)
+		/// <summary>
+		/// A custom hashset to keep a record of which valid
+		/// HMACs have already been used.
+		/// </summary>
+		private readonly HashSet<byte[]> usedHMACs = new HashSet<byte[]>(new HmacComparer());
+
+		/// <summary>
+		/// Constructs a new SecureConversation over an insecure conversation.
+		/// </summary>
+		/// <param name="insecureConversation">
+		/// The insecure conversation to talk over.
+		/// </param>
+		public SecureConversation(IConversable insecureConversation)
 		{
-			this.rawMessenger = rawMessenger;
+			this.insecureConversation = insecureConversation;
 		}
 
+		/// <summary>
+		/// Performs a key exchange across the insecure connection.
+		/// </summary>
+		/// <returns>An awaitable task.</returns>
 		public async Task Establish()
 		{
 			// Generates the local private key
 			ECDiffieHellmanCng privateKey = new ECDiffieHellmanCng(521);
-			var sent = rawMessenger.Send(privateKey.PublicKey.ToByteArray());
+			var sent = insecureConversation.Send(privateKey.PublicKey.ToByteArray());
 
-			// Reassembles the other users 
-			CngKey foreignPublicKey = CngKey.Import(await rawMessenger.Receive(), CngKeyBlobFormat.EccPublicBlob);
+			// Reassembles the other users
+			CngKey foreignPublicKey = CngKey.Import(await insecureConversation.Receive(), CngKeyBlobFormat.EccPublicBlob);
 
 			// Uses sha256 by default
 			sharedKey = privateKey.DeriveKeyMaterial(foreignPublicKey);
@@ -49,28 +68,27 @@ namespace Hosta.Net
 		public Task Send(byte[] data)
 		{
 			byte[] secureMessage = ConstructSecurePackage(data);
-			return rawMessenger.Send(secureMessage);
+			return insecureConversation.Send(secureMessage);
 		}
 
+		/// <summary>
+		/// Asynchronously receives an encrypted message.
+		/// </summary>
+		/// <returns>
+		/// An awaitable task that resolves to the decrypted message.
+		/// </returns>
 		public async Task<byte[]> Receive()
 		{
-			byte[] package = await rawMessenger.Receive();
+			byte[] package = await insecureConversation.Receive();
 			return OpenSecurePackage(package);
 		}
 
 		/// <summary>
-		/// Securely receives a message.
-		/// </summary>
-		/// <returns>An awaitable task that resolves to the decrypted message.</returns>
-		
-
-		/// <summary>
-		/// Message will be constructed in the format:
-		/// 16B IV, ciphertext, 32B HMAC
+		/// Packages IV, ciphertext, and HMAC together.
 		/// </summary>
 		/// <param name="plainblob">The data to secure.</param>
 		/// <returns>The secure message package.</returns>
-		byte[] ConstructSecurePackage(byte[] plainblob)
+		private byte[] ConstructSecurePackage(byte[] plainblob)
 		{
 			// Generate an IV
 			byte[] head = Crypto.SecureRandomBytes(Crypto.SYMMETRIC_IV_SIZE);
@@ -95,19 +113,18 @@ namespace Hosta.Net
 		}
 
 		/// <summary>
-		/// Deconstruct secure message, raises exceptions if unable to authenticate.
+		/// Verifies HMAC and decrypts message.
 		/// </summary>
 		/// <param name="package">The secure message package.</param>
 		/// <exception cref="DuplicatePackageException"/>
 		/// <exception cref="TamperedPackageException"/>
 		/// <returns>The package contents.</returns>
-		byte[] OpenSecurePackage(byte[] package)
+		private byte[] OpenSecurePackage(byte[] package)
 		{
-
 			// Separate the tail from the rest of the package
 			byte[] headAndBody = new byte[package.Length - Crypto.HASH_SIZE];
 			Array.Copy(package, 0, headAndBody, 0, headAndBody.Length);
-				
+
 			byte[] tail = new byte[Crypto.HASH_SIZE];
 			Array.Copy(package, headAndBody.Length, tail, 0, tail.Length);
 
@@ -137,8 +154,17 @@ namespace Hosta.Net
 			return plainblob;
 		}
 
-		class ByteArrayComparer : IEqualityComparer<byte[]>
+		/// <summary>
+		/// Used by the HashSet to prevent duplicte HMACs.
+		/// </summary>
+		private class HmacComparer : IEqualityComparer<byte[]>
 		{
+			/// <summary>
+			/// Checks if two HMACs are the same.
+			/// </summary>
+			/// <param name="a">HMAC to compare.</param>
+			/// <param name="b">HMAC to compare.</param>
+			/// <returns>True if they are the same, otherwise false.</returns>
 			public bool Equals(byte[] a, byte[] b)
 			{
 				if (a.Length != b.Length) return false;
@@ -146,11 +172,16 @@ namespace Hosta.Net
 					if (a[i] != b[i]) return false;
 				return true;
 			}
+
+			/// <summary>
+			/// Returns the first 4 bytes of the HMAC.
+			/// </summary>
+			/// <param name="data">HMAC to get the hashcode of.</param>
+			/// <returns></returns>
 			public int GetHashCode(byte[] data)
 			{
 				return BitConverter.ToInt32(data, 0);
 			}
 		}
-
 	}
 }

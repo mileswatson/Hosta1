@@ -1,13 +1,11 @@
-﻿using System;
-using System.IO;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using System.Diagnostics;
+using System.IO;
 
 namespace Model
 {
 	public class Database
 	{
-		
 		public Database(string filename)
 		{
 			if (!File.Exists(filename))
@@ -15,7 +13,6 @@ namespace Model
 				Directory.CreateDirectory(Path.GetDirectoryName(filename));
 				File.Create(filename);
 			}
-			
 
 			using (var conn = new SqliteConnection("Data Source=./Data/database.sqlite;Mode=ReadWriteCreate"))
 			{
@@ -29,10 +26,6 @@ namespace Model
 				command.ExecuteNonQuery();
 				Debug.WriteLine("Created.");
 			}
-
 		}
-
-		
-
 	}
 }

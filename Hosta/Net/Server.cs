@@ -3,16 +3,14 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
 	public class Server
 	{
-		readonly IPEndPoint localEndPoint;
-		readonly Socket listener;
+		private readonly IPEndPoint localEndPoint;
+		private readonly Socket listener;
 
 		public Server(int port)
 		{
@@ -62,10 +60,10 @@ namespace Hosta.Net
 				while (true)
 				{
 					Console.WriteLine("Waiting for a connection...");
-					StreamMessenger messenger = await AcceptConnection();
-
+					ConversationStreamer messenger = await AcceptConnection();
 				}
-			} catch (Exception e)
+			}
+			catch (Exception e)
 			{
 				Console.WriteLine(e.ToString());
 			}
@@ -73,9 +71,9 @@ namespace Hosta.Net
 			Console.Read();
 		}
 
-		private Task<StreamMessenger> AcceptConnection()
+		private Task<ConversationStreamer> AcceptConnection()
 		{
-			var tcs = new TaskCompletionSource<StreamMessenger>();
+			var tcs = new TaskCompletionSource<ConversationStreamer>();
 
 			listener.BeginAccept(ar =>
 			{
@@ -83,7 +81,7 @@ namespace Hosta.Net
 				{
 					var s = ar.AsyncState as Socket;
 					var socketStream = new SocketStream(s.EndAccept(ar));
-					tcs.SetResult(new StreamMessenger(socketStream));
+					tcs.SetResult(new ConversationStreamer(socketStream));
 				}
 				catch (Exception e)
 				{

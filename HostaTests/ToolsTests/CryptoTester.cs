@@ -1,17 +1,13 @@
-﻿using System;
+﻿using Hosta.Tools;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Text;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Hosta.Tools;
-using System.Threading.Tasks;
 
 namespace HostaTests.ToolsTests
 {
 	[TestClass]
 	public class CryptoTester
 	{
-
 		[DataTestMethod]
 		[DataRow("")]
 		[DataRow("s")]
@@ -31,7 +27,6 @@ namespace HostaTests.ToolsTests
 
 			Assert.AreEqual(plaintext, newPlaintext);
 		}
-
 
 		[TestMethod]
 		public void RoundTrip_Empty()
@@ -59,8 +54,5 @@ namespace HostaTests.ToolsTests
 				}
 			}
 		}
-
-		
-
 	}
 }

@@ -1,11 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Hosta.Exceptions
 {
-	class TamperedPackageException : Exception
+	/// <summary>
+	/// Indicates a secure message has been tampered with, could possibly indicate DoS.
+	/// </summary>
+	internal class TamperedPackageException : Exception
 	{
+		/// <summary>
+		/// Constructs a new TamperedPackageException.
+		/// </summary>
+		/// <param name="message">Exception details.</param>
 		public TamperedPackageException(string message) : base(message)
 		{
 		}

@@ -1,22 +1,33 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
+	/// <summary>
+	/// An APM to TAP wrapper for the default socket class.
+	/// </summary>
 	public class SocketStream : IStreamable
 	{
-		readonly Socket socket;
+		/// <summary>
+		/// The system socket to communicate with.
+		/// </summary>
+		private readonly Socket socket;
+
+		/// <summary>
+		/// Constructs a new SocketStream from a connected socket.
+		/// </summary>
+		/// <param name="connectedSocket">
+		/// The underlying socket to use.
+		/// </param>
 		public SocketStream(Socket connectedSocket)
 		{
 			socket = connectedSocket;
 		}
 
 		/// <summary>
-		/// An APM to TAP wrapper for reading a fixed number of 
-		/// bytes from the tcp stream.
+		/// An APM to TAP wrapper for reading a fixed number of
+		/// bytes from the TCP stream.
 		/// </summary>
 		/// <param name="size">The number of bytes to read.</param>
 		/// <returns>
@@ -66,6 +77,5 @@ namespace Hosta.Net
 			}, null);
 			return tcs.Task;
 		}
-
 	}
 }

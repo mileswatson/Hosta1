@@ -1,4 +1,5 @@
 ﻿using Model;
+using System.Diagnostics;
 using System.Windows;
 
 namespace UI
@@ -19,6 +20,7 @@ namespace UI
 		private void ShowButton_Click(object sender, RoutedEventArgs e)
 		{
 			db = new Database("./Data/database.sqlite");
+			Debug.WriteLine(db);
 		}
 	}
 }

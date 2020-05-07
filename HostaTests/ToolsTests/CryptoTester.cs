@@ -42,7 +42,7 @@ namespace HostaTests.ToolsTests
 		}
 
 		[DataTestMethod]
-		[DataRow(1000)]
+		[DataRow(500)]
 		public void SecureRandomBytes_DifferentEverytime(int numToCompare)
 		{
 			List<byte[]> generated = new List<byte[]>();

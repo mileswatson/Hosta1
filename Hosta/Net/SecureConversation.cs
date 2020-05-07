@@ -47,14 +47,19 @@ namespace Hosta.Net
 		public async Task Establish()
 		{
 			// Generates the local private key
-			ECDiffieHellmanCng privateKey = new ECDiffieHellmanCng(521);
-			var sent = insecureConversation.Send(privateKey.PublicKey.ToByteArray());
+			ECDiffieHellman privateKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP521);
 
-			// Reassembles the other users
-			CngKey foreignPublicKey = CngKey.Import(await insecureConversation.Receive(), CngKeyBlobFormat.EccPublicBlob);
+			// Sends the local part
+			byte[] localToken = privateKey.ExportSubjectPublicKeyInfo();
+			var sent = insecureConversation.Send(localToken);
 
-			// Uses sha256 by default
-			sharedKey = privateKey.DeriveKeyMaterial(foreignPublicKey);
+			// Receives the foreign part
+			byte[] foreignToken = await insecureConversation.Receive();
+			ECDiffieHellman foreignPublicKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+			foreignPublicKey.ImportSubjectPublicKeyInfo(foreignToken, out _);
+
+			// Derives key using SHA256 by default.
+			sharedKey = privateKey.DeriveKeyFromHash(foreignPublicKey.PublicKey, HashAlgorithmName.SHA256);
 
 			// Ensures the other user has received the message
 			await sent;

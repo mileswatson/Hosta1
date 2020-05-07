@@ -1,4 +1,4 @@
-name: Hosta Library Build/Test (.Net Core)
+name: Library Build/Test (.Net Core)
 
 on:
   push:

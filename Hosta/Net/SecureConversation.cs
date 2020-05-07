@@ -24,7 +24,7 @@ namespace Hosta.Net
 		private byte[] sharedKey;
 
 		/// <summary>
-		/// A custom hashset to keep a record of which valid
+		/// A custom HashSet to keep a record of which valid
 		/// HMACs have already been used.
 		/// </summary>
 		private readonly HashSet<byte[]> usedHMACs = new HashSet<byte[]>(new HmacComparer());
@@ -148,14 +148,14 @@ namespace Hosta.Net
 			byte[] body = new byte[headAndBody.Length - Crypto.SYMMETRIC_IV_SIZE];
 			Array.Copy(headAndBody, head.Length, body, 0, body.Length);
 
-			// Decrypt the ciphertext
+			// Decrypt the cipher-text
 			byte[] plainblob = Crypto.Decrypt(body, sharedKey, head);
 
 			return plainblob;
 		}
 
 		/// <summary>
-		/// Used by the HashSet to prevent duplicte HMACs.
+		/// Used by the HashSet to prevent duplicate HMACs.
 		/// </summary>
 		private class HmacComparer : IEqualityComparer<byte[]>
 		{
@@ -176,7 +176,7 @@ namespace Hosta.Net
 			/// <summary>
 			/// Returns the first 4 bytes of the HMAC.
 			/// </summary>
-			/// <param name="data">HMAC to get the hashcode of.</param>
+			/// <param name="data">HMAC to get the hash-code of.</param>
 			/// <returns></returns>
 			public int GetHashCode(byte[] data)
 			{

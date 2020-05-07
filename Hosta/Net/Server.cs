@@ -32,11 +32,11 @@ namespace Hosta.Net
 					if (item.OperationalStatus == OperationalStatus.Up)
 					{   // Fetch the properties of this adapter
 						IPInterfaceProperties adapterProperties = item.GetIPProperties();
-						// Check if the gateway adress exist, if not its most likley a virtual network or smth
+						// Check if the gateway address exist, if not its most likely a virtual network
 						if (adapterProperties.GatewayAddresses.Count != 0)
-						{   // Iterate over each available unicast adresses
+						{   // Iterate over each available unicast addresses
 							foreach (UnicastIPAddressInformation ip in adapterProperties.UnicastAddresses)
-							{   // If the IP is a local IPv4 adress
+							{   // If the IP is a local IPv4 address
 								if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
 								{   // Found a match!
 									output.Add(ip.Address);

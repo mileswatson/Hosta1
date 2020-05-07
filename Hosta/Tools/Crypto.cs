@@ -51,7 +51,7 @@ namespace Hosta.Tools
 		/// Calculates an HMAC.
 		/// </summary>
 		/// <param name="data">The data to calculate HMAC from.</param>
-		/// <param name="key">The key to calculte HMAC from.</param>
+		/// <param name="key">The key to calculate HMAC from.</param>
 		/// <returns>The HMAC of the data and key.</returns>
 		public static byte[] HMAC(byte[] data, byte[] key)
 		{

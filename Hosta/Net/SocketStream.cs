@@ -29,7 +29,9 @@ namespace Hosta.Net
 		/// An APM to TAP wrapper for reading a fixed number of
 		/// bytes from the TCP stream.
 		/// </summary>
-		/// <param name="size">The number of bytes to read.</param>
+		/// <param name="size">
+		///	The number of bytes to read from the TCP stream.
+		/// </param>
 		/// <returns>
 		/// An awaitable task that resolves to the read blob.
 		/// </returns>
@@ -54,9 +56,9 @@ namespace Hosta.Net
 
 		/// <summary>
 		/// An APM to TAP wrapper for writing
-		/// bytes to the tcp stream.
+		/// bytes to the TCP stream.
 		/// </summary>
-		/// <param name="blob">The raw data to write to the tcp stream.</param>
+		/// <param name="blob">The raw data to write to the TCP stream.</param>
 		/// <returns>
 		/// An awaitable task.
 		/// </returns>

@@ -180,7 +180,7 @@ namespace Hosta.Net
 			/// <returns></returns>
 			public int GetHashCode(byte[] data)
 			{
-				return BitConverter.ToInt32(data, 0);
+				return BitConverter.ToInt32(Crypto.Hash(data), 0);
 			}
 		}
 	}

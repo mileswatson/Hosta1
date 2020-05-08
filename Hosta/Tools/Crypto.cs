@@ -68,9 +68,13 @@ namespace Hosta.Tools
 		/// <returns></returns>
 		public static byte[] Encrypt(byte[] plainblob, byte[] key, byte[] iv)
 		{
-			using Aes aes = Aes.Create();
-			aes.Key = key;
-			aes.IV = iv;
+			using var aes = new AesManaged()
+			{
+				Key = key,
+				IV = iv,
+				Mode = CipherMode.CBC,
+				Padding = PaddingMode.PKCS7
+			};
 
 			using MemoryStream cipherstream = new MemoryStream();
 			using CryptoStream cryptostream = new CryptoStream(cipherstream, aes.CreateEncryptor(), CryptoStreamMode.Write);
@@ -88,9 +92,13 @@ namespace Hosta.Tools
 		/// <returns>The decrypted plainblob.</returns>
 		public static byte[] Decrypt(byte[] cipherblob, byte[] key, byte[] iv)
 		{
-			using Aes aes = Aes.Create();
-			aes.Key = key;
-			aes.IV = iv;
+			using var aes = new AesManaged()
+			{
+				Key = key,
+				IV = iv,
+				Mode = CipherMode.CBC,
+				Padding = PaddingMode.PKCS7
+			};
 
 			using MemoryStream plainstream = new MemoryStream();
 			using CryptoStream cryptostream = new CryptoStream(plainstream, aes.CreateDecryptor(), CryptoStreamMode.Write);

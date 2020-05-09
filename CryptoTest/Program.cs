@@ -10,7 +10,7 @@ namespace Hosta.Net
 	{
 		public static void Main()
 		{
-			Console.WriteLine(Transcoding.GetText(new byte[] { 51, 0, 0, 32 }));
+			Console.WriteLine(Transcoder.TextFromBytes(new byte[] { 51, 0, 0, 32 }));
 			LocalStream ls1 = new LocalStream();
 			LocalStream ls2 = new LocalStream();
 

@@ -1,4 +1,5 @@
-﻿using Hosta.Exceptions;
+﻿using Hosta.Crypto;
+using Hosta.Exceptions;
 using Hosta.Tools;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace Hosta.Net
 		/// <summary>
 		/// The shared AES and HMAC key.
 		/// </summary>
-		private byte[] sharedKey;
+		private SymmetricEncryptor cryptor;
 
 		/// <summary>
 		/// A custom HashSet to keep a record of which valid
@@ -59,7 +60,8 @@ namespace Hosta.Net
 			foreignPublicKey.ImportSubjectPublicKeyInfo(foreignToken, out _);
 
 			// Derives key using SHA256 by default.
-			sharedKey = privateKey.DeriveKeyFromHash(foreignPublicKey.PublicKey, HashAlgorithmName.SHA256);
+			byte[] sharedKey = privateKey.DeriveKeyFromHash(foreignPublicKey.PublicKey, HashAlgorithmName.SHA256);
+			cryptor = new SymmetricEncryptor(sharedKey);
 
 			// Ensures the other user has received the message
 			await sent;
@@ -96,10 +98,10 @@ namespace Hosta.Net
 		private byte[] ConstructSecurePackage(byte[] plainblob)
 		{
 			// Generate an IV
-			byte[] head = Crypto.SecureRandomBytes(Crypto.SYMMETRIC_IV_SIZE);
+			byte[] head = SecureRandomGenerator.GetBytes(SymmetricEncryptor.IV_SIZE);
 
 			// Encrypt the plaintext
-			byte[] body = Crypto.Encrypt(plainblob, sharedKey, head);
+			byte[] body = cryptor.Encrypt(plainblob, head);
 
 			// Prepend the IV to the ciphertext
 			byte[] headAndBody = new byte[head.Length + body.Length];
@@ -107,7 +109,7 @@ namespace Hosta.Net
 			Array.Copy(body, 0, headAndBody, head.Length, body.Length);
 
 			// Calculate the HMAC of the first two parts
-			byte[] tail = Crypto.HMAC(headAndBody, sharedKey);
+			byte[] tail = Hasher.HMAC(headAndBody, cryptor.KeyHash);
 
 			// Construct the final package
 			byte[] package = new byte[headAndBody.Length + tail.Length];
@@ -127,10 +129,10 @@ namespace Hosta.Net
 		private byte[] OpenSecurePackage(byte[] package)
 		{
 			// Separate the tail from the rest of the package
-			byte[] headAndBody = new byte[package.Length - Crypto.HASH_SIZE];
+			byte[] headAndBody = new byte[package.Length - Hasher.OUTPUT_SIZE];
 			Array.Copy(package, 0, headAndBody, 0, headAndBody.Length);
 
-			byte[] tail = new byte[Crypto.HASH_SIZE];
+			byte[] tail = new byte[Hasher.OUTPUT_SIZE];
 			Array.Copy(package, headAndBody.Length, tail, 0, tail.Length);
 
 			// Check that the HMAC has not been used before
@@ -140,21 +142,21 @@ namespace Hosta.Net
 			}
 
 			// Verify the integrity of the message
-			byte[] actualHMAC = Crypto.HMAC(headAndBody, sharedKey);
+			byte[] actualHMAC = Hasher.HMAC(headAndBody, cryptor.KeyHash);
 			if (!tail.SequenceEqual(actualHMAC))
 			{
 				throw new TamperedPackageException("HMAC does not match received package.");
 			}
 
 			// Separate the IV and ciphertext
-			byte[] head = new byte[Crypto.SYMMETRIC_IV_SIZE];
+			byte[] head = new byte[SymmetricEncryptor.IV_SIZE];
 			Array.Copy(headAndBody, 0, head, 0, head.Length);
 
-			byte[] body = new byte[headAndBody.Length - Crypto.SYMMETRIC_IV_SIZE];
+			byte[] body = new byte[headAndBody.Length - SymmetricEncryptor.IV_SIZE];
 			Array.Copy(headAndBody, head.Length, body, 0, body.Length);
 
 			// Decrypt the cipher-text
-			byte[] plainblob = Crypto.Decrypt(body, sharedKey, head);
+			byte[] plainblob = cryptor.Decrypt(body, head);
 
 			return plainblob;
 		}
@@ -185,7 +187,7 @@ namespace Hosta.Net
 			/// <returns></returns>
 			public int GetHashCode(byte[] data)
 			{
-				return BitConverter.ToInt32(Crypto.Hash(data), 0);
+				return BitConverter.ToInt32(Hasher.Hash(data), 0);
 			}
 		}
 	}

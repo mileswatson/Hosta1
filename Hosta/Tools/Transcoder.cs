@@ -7,14 +7,14 @@ namespace Hosta.Tools
 	/// <summary>
 	/// Used to transcode between datatypes.
 	/// </summary>
-	public static class Transcoding
+	public static class Transcoder
 	{
 		/// <summary>
 		/// Encodes a string using UTF8.
 		/// </summary>
 		/// <param name="text">The text to encode.</param>
 		/// <returns>The encoded bytes.</returns>
-		public static byte[] FromText(string text)
+		public static byte[] BytesFromText(string text)
 		{
 			return Encoding.UTF8.GetBytes(text);
 		}
@@ -24,7 +24,7 @@ namespace Hosta.Tools
 		/// </summary>
 		/// <param name="utf8bytes">The encoded bytes to decode.</param>
 		/// <returns>The decoded string.</returns>
-		public static string GetText(byte[] utf8bytes)
+		public static string TextFromBytes(byte[] utf8bytes)
 		{
 			var enc = new UTF8Encoding(false, true);
 
@@ -43,7 +43,7 @@ namespace Hosta.Tools
 		/// </summary>
 		/// <param name="bytes"></param>
 		/// <returns>The encoded string.</returns>
-		public static string GetHex(byte[] bytes)
+		public static string HexFromBytes(byte[] bytes)
 		{
 			StringBuilder hex = new StringBuilder(bytes.Length * 2);
 			foreach (byte b in bytes)
@@ -56,7 +56,7 @@ namespace Hosta.Tools
 		/// </summary>
 		/// <param name="hex">The hex string to decode.</param>
 		/// <returns>The decoded bytes.</returns>
-		public static byte[] FromHex(string hex)
+		public static byte[] BytesFromHex(string hex)
 		{
 			if (hex.Length % 2 != 0)
 			{

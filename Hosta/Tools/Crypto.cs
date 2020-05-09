@@ -68,6 +68,12 @@ namespace Hosta.Tools
 		/// <returns></returns>
 		public static byte[] Encrypt(byte[] plainblob, byte[] key, byte[] iv)
 		{
+			// Checks that the key+iv are the correct lengths
+			if (key.Length != SYMMETRIC_KEY_SIZE || iv.Length != SYMMETRIC_IV_SIZE)
+			{
+				throw new InvalidDataException("Ciphertext does not have the correct size!");
+			}
+
 			using var aes = new AesManaged()
 			{
 				Key = key,
@@ -92,6 +98,15 @@ namespace Hosta.Tools
 		/// <returns>The decrypted plainblob.</returns>
 		public static byte[] Decrypt(byte[] cipherblob, byte[] key, byte[] iv)
 		{
+			// Checks that the cipherblob length is a multiple of the block size in bytes,
+			// and that the key+iv are the correct lengths
+			if (cipherblob.Length % SYMMETRIC_IV_SIZE != 0
+				|| key.Length != SYMMETRIC_KEY_SIZE
+				|| iv.Length != SYMMETRIC_IV_SIZE)
+			{
+				throw new InvalidDataException("Ciphertext does not have the correct size!");
+			}
+
 			using var aes = new AesManaged()
 			{
 				Key = key,

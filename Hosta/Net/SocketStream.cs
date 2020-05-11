@@ -37,6 +37,7 @@ namespace Hosta.Net
 		/// </returns>
 		public Task<byte[]> Read(int size)
 		{
+			ThrowIfDisposed();
 			byte[] buffer = new byte[size];
 			var tcs = new TaskCompletionSource<byte[]>();
 			socket.BeginReceive(buffer, 0, size, 0, ar =>
@@ -64,6 +65,7 @@ namespace Hosta.Net
 		/// </returns>
 		public Task Write(byte[] blob)
 		{
+			ThrowIfDisposed();
 			var tcs = new TaskCompletionSource<object>();
 			socket.BeginSend(blob, 0, blob.Length, 0, ar =>
 			{
@@ -78,6 +80,33 @@ namespace Hosta.Net
 				}
 			}, null);
 			return tcs.Task;
+		}
+
+		//// Implements IDisposable
+
+		private bool disposed = false;
+
+		private void ThrowIfDisposed()
+		{
+			if (disposed) throw new ObjectDisposedException("SocketStream has been disposed!");
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				// Dispose of managed resources
+				socket.Close();
+			}
+
+			disposed = true;
 		}
 	}
 }

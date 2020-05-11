@@ -38,6 +38,7 @@ namespace Hosta.Net
 		/// </returns>
 		public async Task Send(byte[] data)
 		{
+			ThrowIfDisposed();
 			if (data.Length > MaxSize)
 			{
 				throw new MessageTooLargeException("A message was too large to be sent!");
@@ -55,12 +56,40 @@ namespace Hosta.Net
 		/// </returns>
 		public async Task<byte[]> Receive()
 		{
+			ThrowIfDisposed();
 			int length = BitConverter.ToInt32(await stream.Read(4), 0);
 			if (length > MaxSize)
 			{
 				throw new MessageTooLargeException("A message was too large to be received!");
 			}
 			return await stream.Read(length);
+		}
+
+		//// Implements IDisposable
+
+		private bool disposed = false;
+
+		private void ThrowIfDisposed()
+		{
+			if (disposed) throw new ObjectDisposedException("ConversationStreamer has been disposed!");
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				// Disposed of managed resources
+				if (stream != null) stream.Dispose();
+			}
+
+			disposed = true;
 		}
 	}
 }

@@ -1,11 +1,12 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
 	/// <summary>
 	/// An interface that supports reading an writing fixed sized items to a stream.
 	/// </summary>
-	public interface IStreamable
+	public interface IStreamable : IDisposable
 	{
 		/// <summary>
 		/// Writes a byte[] to the output stream.

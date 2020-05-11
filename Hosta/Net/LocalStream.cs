@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Hosta.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -15,15 +16,15 @@ namespace Hosta.Net
 		/// <summary>
 		/// A queue of bytes to be read.
 		/// </summary>
-		private readonly Queue<byte> pendingBytes;
+		private Queue<byte> pendingBytes;
 
 		/// <summary>
 		/// A queue of waiting readers.
 		/// </summary>
-		private readonly Queue<Tuple<int, TaskCompletionSource<byte[]>>> pendingReaders;
+		private Queue<Tuple<int, TaskCompletionSource<byte[]>>> pendingReaders;
 
 		/// <summary>
-		/// Initialises byte and reader queues.
+		/// Constructs a new LocalStream.
 		/// </summary>
 		public LocalStream()
 		{
@@ -37,23 +38,53 @@ namespace Hosta.Net
 		/// <param name="contact">The other LocalStream to connect to.</param>
 		public void Connect(LocalStream contact)
 		{
+			ThrowIfDisposed();
 			this.contact = contact;
 		}
 
+		/// <summary>
+		/// Disconnects from the contact.
+		/// </summary>
+		public void Disconnect()
+		{
+			if (contact != null)
+			{
+				contact.contact = null;
+				contact = null;
+			}
+		}
+
+		/// <summary>
+		/// Writes a byte[] to the output stream.
+		/// </summary>
+		/// <param name="blob">The byte[] to write.</param>
+		/// <returns>An awaitable task.</returns>
 		public Task Write(byte[] blob)
 		{
+			ThrowIfDisposed();
+			if (contact == null) throw new StreamDisconnectedException("The LocalStream has no valid contact!");
+
 			return Task.Run(() =>
 			{
-				foreach (byte b in blob)
+				lock (pendingBytes)
 				{
-					contact.pendingBytes.Enqueue(b);
+					foreach (byte b in blob)
+					{
+						contact.pendingBytes.Enqueue(b);
+					}
 				}
 				contact.HandlePendingReaders();
 			});
 		}
 
+		/// <summary>
+		/// Reads a fixed number of bytes from the input stream.
+		/// </summary>
+		/// <param name="size">The number of bytes to read.</param>
+		/// <returns>An awaitable task that resolves to the bytes that were read.</returns>
 		public Task<byte[]> Read(int size)
 		{
+			ThrowIfDisposed();
 			var tcs = new TaskCompletionSource<byte[]>();
 			pendingReaders.Enqueue(new Tuple<int, TaskCompletionSource<byte[]>>(size, tcs));
 			HandlePendingReaders();
@@ -80,6 +111,44 @@ namespace Hosta.Net
 					tcs.SetResult(output);
 				}
 			}
+		}
+
+		//// Implements IDisposable
+
+		private bool disposed = false;
+
+		private void ThrowIfDisposed()
+		{
+			if (disposed) throw new ObjectDisposedException("LocalStream has been disposed!");
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				// Dispose of managed resources
+				Disconnect();
+
+				lock (pendingReaders)
+				{
+					foreach (var t in pendingReaders)
+					{
+						pendingReaders.Dequeue().Item2.TrySetException(
+							new OperationCanceledException("LocalStream has been disposed of before message could be received."));
+					}
+					pendingReaders = null;
+				}
+			}
+
+			disposed = true;
+			Console.WriteLine("LocalStream disposed!");
 		}
 	}
 }

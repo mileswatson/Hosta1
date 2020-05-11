@@ -1,11 +1,12 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Hosta.Net
 {
 	/// <summary>
 	/// An interface that supports a simple asynchronous conversation using byte arrays.
 	/// </summary>
-	public interface IConversable
+	public interface IConversable : IDisposable
 	{
 		/// <summary>
 		/// Asynchronously sends a byte[].

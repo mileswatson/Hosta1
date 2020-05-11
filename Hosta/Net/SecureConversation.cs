@@ -74,6 +74,7 @@ namespace Hosta.Net
 		/// <returns>An awaitable task.</returns>
 		public Task Send(byte[] data)
 		{
+			ThrowIfDisposed();
 			byte[] secureMessage = ConstructSecurePackage(data);
 			return insecureConversation.Send(secureMessage);
 		}
@@ -86,6 +87,7 @@ namespace Hosta.Net
 		/// </returns>
 		public async Task<byte[]> Receive()
 		{
+			ThrowIfDisposed();
 			byte[] package = await insecureConversation.Receive();
 			return OpenSecurePackage(package);
 		}
@@ -159,6 +161,33 @@ namespace Hosta.Net
 			byte[] plainblob = cryptor.Decrypt(body, head);
 
 			return plainblob;
+		}
+
+		//// Implements IDisposable
+
+		private bool disposed = false;
+
+		private void ThrowIfDisposed()
+		{
+			if (disposed) throw new ObjectDisposedException("SecureConversation has been disposed!");
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				// Dispose of managed resources
+				if (insecureConversation != null) insecureConversation.Dispose();
+			}
+
+			disposed = true;
 		}
 
 		/// <summary>

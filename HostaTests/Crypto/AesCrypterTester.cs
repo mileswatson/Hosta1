@@ -8,28 +8,28 @@ using System;
 namespace HostaTests.Crypto
 {
 	[TestClass]
-	public class SymmetricEncryptorTester
+	public class AesCrypterTester
 	{
 		[TestMethod]
 		public void Constructor_Valid()
 		{
-			new SymmetricEncryptor(new byte[SymmetricEncryptor.KEY_SIZE]);
+			new AesCrypter(new byte[AesCrypter.KEY_SIZE]);
 		}
 
 		[TestMethod]
 		public void Constructor_InvalidKey()
 		{
 			Assert.ThrowsException<CryptoParameterException>(
-				() => new SymmetricEncryptor(new byte[0])
+				() => new AesCrypter(new byte[0])
 			);
 			Assert.ThrowsException<CryptoParameterException>(
-				() => new SymmetricEncryptor(new byte[31])
+				() => new AesCrypter(new byte[31])
 			);
 			Assert.ThrowsException<CryptoParameterException>(
-				() => new SymmetricEncryptor(new byte[33])
+				() => new AesCrypter(new byte[33])
 			);
 			Assert.ThrowsException<CryptoParameterException>(
-				() => new SymmetricEncryptor(new byte[64])
+				() => new AesCrypter(new byte[64])
 			);
 		}
 
@@ -37,7 +37,7 @@ namespace HostaTests.Crypto
 		public void Encrypt_InvalidIV()
 		{
 			byte[] key = SecureRandomGenerator.GetBytes(32);
-			var se = new SymmetricEncryptor(key);
+			using var se = new AesCrypter(key);
 
 			byte[] plainblob = SecureRandomGenerator.GetBytes(100);
 
@@ -45,13 +45,13 @@ namespace HostaTests.Crypto
 				se.Encrypt(plainblob, new byte[0])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[SymmetricEncryptor.IV_SIZE - 1])
+				se.Encrypt(plainblob, new byte[AesCrypter.IV_SIZE - 1])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[SymmetricEncryptor.IV_SIZE + 1])
+				se.Encrypt(plainblob, new byte[AesCrypter.IV_SIZE + 1])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[SymmetricEncryptor.IV_SIZE * 2])
+				se.Encrypt(plainblob, new byte[AesCrypter.IV_SIZE * 2])
 			);
 		}
 
@@ -59,7 +59,7 @@ namespace HostaTests.Crypto
 		public void Decrypt_InvalidIV()
 		{
 			byte[] key = SecureRandomGenerator.GetBytes(32);
-			var se = new SymmetricEncryptor(key);
+			using var se = new AesCrypter(key);
 
 			byte[] cipherblob = SecureRandomGenerator.GetBytes(100);
 
@@ -67,13 +67,13 @@ namespace HostaTests.Crypto
 				se.Decrypt(cipherblob, new byte[0])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[SymmetricEncryptor.IV_SIZE - 1])
+				se.Decrypt(cipherblob, new byte[AesCrypter.IV_SIZE - 1])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[SymmetricEncryptor.IV_SIZE + 1])
+				se.Decrypt(cipherblob, new byte[AesCrypter.IV_SIZE + 1])
 			);
 			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[SymmetricEncryptor.IV_SIZE * 2])
+				se.Decrypt(cipherblob, new byte[AesCrypter.IV_SIZE * 2])
 			);
 		}
 
@@ -81,15 +81,15 @@ namespace HostaTests.Crypto
 		public void Decrypt_InvalidCipherblobLength()
 		{
 			byte[] key = SecureRandomGenerator.GetBytes(32);
-			var se = new SymmetricEncryptor(key);
+			using var se = new AesCrypter(key);
 
 			byte[] iv = SecureRandomGenerator.GetBytes(16);
 
 			Assert.ThrowsException<FormatException>(() =>
-				se.Decrypt(new byte[SymmetricEncryptor.IV_SIZE - 1], iv)
+				se.Decrypt(new byte[AesCrypter.IV_SIZE - 1], iv)
 			);
 			Assert.ThrowsException<FormatException>(() =>
-				se.Decrypt(new byte[SymmetricEncryptor.IV_SIZE + 1], iv)
+				se.Decrypt(new byte[AesCrypter.IV_SIZE + 1], iv)
 			);
 		}
 
@@ -102,13 +102,12 @@ namespace HostaTests.Crypto
 		public void RoundTrip_Text(string plaintext)
 		{
 			byte[] key = SecureRandomGenerator.GetBytes(32);
-			var se = new SymmetricEncryptor(key);
+			using var se = new AesCrypter(key);
 
 			byte[] plainblob = Encoding.UTF8.GetBytes(plaintext);
-			byte[] iv = SecureRandomGenerator.GetBytes(16);
 
-			byte[] cipherblob = se.Encrypt(plainblob, iv);
-			byte[] newPlainblob = se.Decrypt(cipherblob, iv);
+			byte[] package = se.Package(plainblob);
+			byte[] newPlainblob = se.Unpackage(package);
 
 			string newPlaintext = Encoding.UTF8.GetString(newPlainblob);
 
@@ -119,12 +118,10 @@ namespace HostaTests.Crypto
 		public void RoundTrip_Empty()
 		{
 			byte[] key = SecureRandomGenerator.GetBytes(32);
-			var se = new SymmetricEncryptor(key);
+			using var se = new AesCrypter(key);
 
-			byte[] iv = SecureRandomGenerator.GetBytes(16);
-
-			byte[] cipherblob = se.Encrypt(new byte[0], iv);
-			byte[] newPlainblob = se.Decrypt(cipherblob, iv);
+			byte[] cipherblob = se.Package(new byte[0]);
+			byte[] newPlainblob = se.Unpackage(cipherblob);
 
 			CollectionAssert.AreEqual(newPlainblob, new byte[0]);
 		}

@@ -1,11 +1,16 @@
-﻿using Hosta.Exceptions;
-using System;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
+
+using Hosta.Exceptions;
+using Hosta.Tools;
 
 namespace Hosta.Net
 {
 	/// <summary>
 	/// Handles the sending and receiving of messages on stream.
+	/// Does not guarantee message order if commands are not awaited.
 	/// </summary>
 	public class ConversationStreamer : IConversable
 	{
@@ -19,17 +24,21 @@ namespace Hosta.Net
 		/// </summary>
 		private const int MaxSize = 1000;
 
+		private readonly AccessQueue sendQueue = new AccessQueue(1);
+
+		private readonly AccessQueue receiveQueue = new AccessQueue(1);
+
 		/// <summary>
 		/// Creates MessageStreamer to wrap an underlying IStreamable stream.
 		/// </summary>
-		/// <param name="stream"></param>
+		/// <param name="stream">The underlying stream to use.</param>
 		public ConversationStreamer(IStreamable stream)
 		{
 			this.stream = stream;
 		}
 
 		/// <summary>
-		/// Asynchronous method that first sends the length
+		/// Method that first sends the length
 		/// of the message, then the message itself.
 		/// </summary>
 		/// <param name="data">The message to send.</param>
@@ -39,17 +48,32 @@ namespace Hosta.Net
 		public async Task Send(byte[] data)
 		{
 			ThrowIfDisposed();
-			if (data.Length > MaxSize)
+			await sendQueue.GetPass();
+			try
 			{
-				throw new MessageTooLargeException("A message was too large to be sent!");
+				if (data.Length > MaxSize)
+				{
+					throw new MessageTooLargeException("A message was too large to be sent!");
+				}
+				await Task.WhenAll(
+					stream.Write(BitConverter.GetBytes(data.Length)),
+					stream.Write(data)
+				);
 			}
-			await stream.Write(BitConverter.GetBytes(data.Length));
-			await stream.Write(data);
+			catch (Exception e)
+			{
+				this.Dispose();
+				throw e;
+			}
+			finally
+			{
+				sendQueue.ReturnPass();
+			}
 		}
 
 		/// <summary>
-		/// Asynchronous method that first reads the length,
-		/// then the main message.
+		/// Asynchronous method that reads first the length
+		/// then the main message from a stream.
 		/// </summary>
 		/// <returns>
 		/// An awaitable task that resolves to the message blob.
@@ -57,12 +81,25 @@ namespace Hosta.Net
 		public async Task<byte[]> Receive()
 		{
 			ThrowIfDisposed();
-			int length = BitConverter.ToInt32(await stream.Read(4), 0);
-			if (length > MaxSize)
+			await receiveQueue.GetPass();
+			try
 			{
-				throw new MessageTooLargeException("A message was too large to be received!");
+				int length = BitConverter.ToInt32(await stream.Read(4), 0);
+				if (length > MaxSize)
+				{
+					throw new MessageTooLargeException("A message was too large to be received!");
+				}
+				return await stream.Read(length);
 			}
-			return await stream.Read(length);
+			catch (Exception e)
+			{
+				this.Dispose();
+				throw e;
+			}
+			finally
+			{
+				receiveQueue.ReturnPass();
+			}
 		}
 
 		//// Implements IDisposable
@@ -87,6 +124,8 @@ namespace Hosta.Net
 			{
 				// Disposed of managed resources
 				if (stream != null) stream.Dispose();
+				if (sendQueue != null) sendQueue.Dispose();
+				if (receiveQueue != null) receiveQueue.Dispose();
 			}
 
 			disposed = true;

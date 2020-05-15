@@ -1,7 +1,12 @@
-﻿using Hosta.Exceptions;
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
+
+using Hosta.Exceptions;
+using Hosta.Tools;
 
 namespace Hosta.Net
 {
@@ -14,22 +19,25 @@ namespace Hosta.Net
 		private LocalStream contact;
 
 		/// <summary>
-		/// A queue of bytes to be read.
+		/// Allows for ordered, asynchronous sending of bytes.
 		/// </summary>
-		private Queue<byte> pendingBytes;
+		private readonly Queue<byte> pendingBytes = new Queue<byte>();
 
 		/// <summary>
-		/// A queue of waiting readers.
+		/// Only allows one person to read at a time.
 		/// </summary>
-		private Queue<Tuple<int, TaskCompletionSource<byte[]>>> pendingReaders;
+		private readonly AccessQueue readQueue = new AccessQueue(1);
+
+		/// <summary>
+		/// Only allows one person to write at a time.
+		/// </summary>
+		private readonly AccessQueue writeQueue = new AccessQueue(1);
 
 		/// <summary>
 		/// Constructs a new LocalStream.
 		/// </summary>
 		public LocalStream()
 		{
-			pendingBytes = new Queue<byte>();
-			pendingReaders = new Queue<Tuple<int, TaskCompletionSource<byte[]>>>();
 		}
 
 		/// <summary>
@@ -59,22 +67,26 @@ namespace Hosta.Net
 		/// </summary>
 		/// <param name="blob">The byte[] to write.</param>
 		/// <returns>An awaitable task.</returns>
-		public Task Write(byte[] blob)
+		public async Task Write(byte[] blob)
 		{
 			ThrowIfDisposed();
 			if (contact == null) throw new StreamDisconnectedException("The LocalStream has no valid contact!");
 
-			return Task.Run(() =>
+			await writeQueue.GetPass();
+			try
 			{
-				lock (pendingBytes)
-				{
-					foreach (byte b in blob)
-					{
-						contact.pendingBytes.Enqueue(b);
-					}
-				}
-				contact.HandlePendingReaders();
-			});
+				foreach (byte b in blob) contact.pendingBytes.Enqueue(b);
+			}
+			catch (Exception e)
+			{
+				Dispose();
+				throw e;
+			}
+			finally
+			{
+				writeQueue.ReturnPass();
+				contact.readQueue.CheckForSpace();
+			}
 		}
 
 		/// <summary>
@@ -82,34 +94,27 @@ namespace Hosta.Net
 		/// </summary>
 		/// <param name="size">The number of bytes to read.</param>
 		/// <returns>An awaitable task that resolves to the bytes that were read.</returns>
-		public Task<byte[]> Read(int size)
+		public async Task<byte[]> Read(int size)
 		{
 			ThrowIfDisposed();
-			var tcs = new TaskCompletionSource<byte[]>();
-			pendingReaders.Enqueue(new Tuple<int, TaskCompletionSource<byte[]>>(size, tcs));
-			HandlePendingReaders();
-			return tcs.Task;
-		}
-
-		/// <summary>
-		/// Used to ensure that stream order is maintained.
-		/// </summary>
-		public void HandlePendingReaders()
-		{
-			lock (pendingReaders)
+			await readQueue.GetPass(() => pendingBytes.Count >= size);
+			try
 			{
-				while (pendingReaders.Count > 0 && pendingBytes.Count >= pendingReaders.Peek().Item1)
+				byte[] blob = new byte[size];
+				for (int i = 0; i < size; i++)
 				{
-					var job = pendingReaders.Dequeue();
-					int size = job.Item1;
-					TaskCompletionSource<byte[]> tcs = job.Item2;
-					byte[] output = new byte[size];
-					for (int i = 0; i < size; i++)
-					{
-						output[i] = pendingBytes.Dequeue();
-					}
-					tcs.SetResult(output);
+					blob[i] = pendingBytes.Dequeue();
 				}
+				return blob;
+			}
+			catch (Exception e)
+			{
+				this.Dispose();
+				throw e;
+			}
+			finally
+			{
+				readQueue.ReturnPass();
 			}
 		}
 
@@ -135,20 +140,12 @@ namespace Hosta.Net
 			{
 				// Dispose of managed resources
 				Disconnect();
-
-				lock (pendingReaders)
-				{
-					foreach (var t in pendingReaders)
-					{
-						pendingReaders.Dequeue().Item2.TrySetException(
-							new OperationCanceledException("LocalStream has been disposed of before message could be received."));
-					}
-					pendingReaders = null;
-				}
+				if (writeQueue != null) writeQueue.Dispose();
+				if (readQueue != null) readQueue.Dispose();
+				pendingBytes.Clear();
 			}
 
 			disposed = true;
-			Console.WriteLine("LocalStream disposed!");
 		}
 	}
 }

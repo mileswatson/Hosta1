@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Hosta.Crypto;
 using Hosta.Tools;
 
 namespace Hosta.Net
@@ -10,37 +13,33 @@ namespace Hosta.Net
 	{
 		public static void Main()
 		{
-			using (var ls1 = new LocalStream())
-			using (var ls2 = new LocalStream())
-			{
-				ls1.Connect(ls2);
-				ls2.Connect(ls1);
+			using var ls1 = new LocalStream();
+			using var ls2 = new LocalStream();
+			using var cs1 = new ConversationStreamer(ls1);
+			using var cs2 = new ConversationStreamer(ls2);
+			using var sc1 = new SecureConversation(cs1);
+			using var sc2 = new SecureConversation(cs2);
+			ls1.Connect(ls2);
+			ls2.Connect(ls1);
 
-				ConversationStreamer ms1 = new ConversationStreamer(ls1);
-				ConversationStreamer ms2 = new ConversationStreamer(ls2);
+			var a = sc1.Establish(false);
+			var b = sc2.Establish(true);
 
-				SecureConversation sm1 = new SecureConversation(ms1);
-				SecureConversation sm2 = new SecureConversation(ms2);
+			Task.WaitAll(a, b);
 
-				Task.WaitAll(sm1.Establish(), sm2.Establish());
+			a = sc2.Send(Encode("hello"));
+			b = sc2.Send(Encode("hello1"));
+			var c = sc2.Send(Encode("hello2"));
+			var d = sc2.Send(Encode("hello3"));
+			var e = sc1.Send(Encode("hello4"));
+			var f = sc2.Send(Encode("hello5"));
 
-				sm1.Send(Encode("From sm1 - 1"));
-				sm2.Send(Encode("From sm2 - 1"));
-
-				Task<byte[]> received11 = sm1.Receive();
-				Task<byte[]> received12 = sm1.Receive();
-
-				sm1.Send(Encode("From sm1 - 2"));
-				sm2.Send(Encode("From sm2 - 2"));
-
-				Task<byte[]> received21 = sm2.Receive();
-				Task<byte[]> received22 = sm2.Receive();
-
-				Console.WriteLine(Decode(received11.Result));
-				Console.WriteLine(Decode(received12.Result));
-				Console.WriteLine(Decode(received21.Result));
-				Console.WriteLine(Decode(received22.Result));
-			}
+			Console.WriteLine(Decode(sc1.Receive().Result));
+			Console.WriteLine(Decode(sc1.Receive().Result));
+			Console.WriteLine(Decode(sc1.Receive().Result));
+			Console.WriteLine(Decode(sc1.Receive().Result));
+			Console.WriteLine(Decode(sc2.Receive().Result));
+			Console.WriteLine(Decode(sc1.Receive().Result));
 		}
 
 		public static byte[] Encode(string data)

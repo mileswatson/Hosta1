@@ -2,6 +2,9 @@
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
+using Hosta.Exceptions;
+using Hosta.Tools;
+
 namespace Hosta.Net
 {
 	/// <summary>
@@ -13,6 +16,10 @@ namespace Hosta.Net
 		/// The system socket to communicate with.
 		/// </summary>
 		private readonly Socket socket;
+
+		private readonly AccessQueue readQueue = new AccessQueue(1);
+
+		private readonly AccessQueue writeQueue = new AccessQueue(1);
 
 		/// <summary>
 		/// Constructs a new SocketStream from a connected socket.
@@ -35,24 +42,41 @@ namespace Hosta.Net
 		/// <returns>
 		/// An awaitable task that resolves to the read blob.
 		/// </returns>
-		public Task<byte[]> Read(int size)
+		public async Task<byte[]> Read(int size)
 		{
 			ThrowIfDisposed();
-			byte[] buffer = new byte[size];
-			var tcs = new TaskCompletionSource<byte[]>();
-			socket.BeginReceive(buffer, 0, size, 0, ar =>
+			await readQueue.GetPass();
+			try
 			{
-				try
+				byte[] buffer = new byte[size];
+				var tcs = new TaskCompletionSource<byte[]>();
+				socket.BeginReceive(buffer, 0, size, 0, ar =>
 				{
-					socket.EndReceive(ar);
-					tcs.SetResult(buffer);
-				}
-				catch (Exception e)
-				{
-					tcs.SetException(e);
-				}
-			}, null);
-			return tcs.Task;
+					try
+					{
+						socket.EndReceive(ar);
+						tcs.SetResult(buffer);
+					}
+					catch (Exception e)
+					{
+						tcs.SetException(e);
+					}
+					finally
+					{
+						readQueue.ReturnPass();
+					}
+				}, null);
+				return await tcs.Task;
+			}
+			catch (Exception e)
+			{
+				Dispose();
+				throw e;
+			}
+			finally
+			{
+				readQueue.ReturnPass();
+			}
 		}
 
 		/// <summary>
@@ -63,9 +87,10 @@ namespace Hosta.Net
 		/// <returns>
 		/// An awaitable task.
 		/// </returns>
-		public Task Write(byte[] blob)
+		public async Task Write(byte[] blob)
 		{
 			ThrowIfDisposed();
+			await writeQueue.GetPass();
 			var tcs = new TaskCompletionSource<object>();
 			socket.BeginSend(blob, 0, blob.Length, 0, ar =>
 			{
@@ -78,8 +103,12 @@ namespace Hosta.Net
 				{
 					tcs.SetException(e);
 				}
+				finally
+				{
+					writeQueue.ReturnPass();
+				}
 			}, null);
-			return tcs.Task;
+			await tcs.Task;
 		}
 
 		//// Implements IDisposable
@@ -103,6 +132,8 @@ namespace Hosta.Net
 			if (disposing)
 			{
 				// Dispose of managed resources
+				if (readQueue != null) readQueue.Dispose();
+				if (writeQueue != null) writeQueue.Dispose();
 				socket.Close();
 			}
 

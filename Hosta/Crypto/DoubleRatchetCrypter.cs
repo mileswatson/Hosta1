@@ -59,10 +59,10 @@ namespace Hosta.Crypto
 		/// Performs the initial secret turn (ECDH).
 		/// </summary>
 		/// <param name="blob"></param>
-		public void Establish(byte[] blob)
+		public void Establish(byte[] foreignTokenBlob)
 		{
 			ThrowIfDisposed();
-			this.foreignToken = new ECDHRatchet.Token(blob);
+			this.foreignToken = new ECDHRatchet.Token(foreignTokenBlob);
 			secret.Turn(this.foreignToken);
 			UpdateEncryptRatchetClicks();
 			UpdateDecryptRatchetClicks();
@@ -79,8 +79,8 @@ namespace Hosta.Crypto
 			int start = isInitiator ? 0 : 32;
 			Array.Copy(raw, start, clicks, 0, 32);
 			encryptRatchet.Clicks = clicks;
-			if (isInitiator) Console.WriteLine("Alice R CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
-			else Console.WriteLine("Bob L CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
+			//if (isInitiator) Console.WriteLine("Alice R CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
+			//else Console.WriteLine("Bob L CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
 		}
 
 		/// <summary>
@@ -94,8 +94,8 @@ namespace Hosta.Crypto
 			int start = isInitiator ? 32 : 0;
 			Array.Copy(raw, start, clicks, 0, 32);
 			decryptRatchet.Clicks = clicks;
-			if (isInitiator) Console.WriteLine("Alice L CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
-			else Console.WriteLine("Bob R CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
+			//if (isInitiator) Console.WriteLine("Alice L CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
+			//else Console.WriteLine("Bob R CLICKS SET TO " + Transcoder.HexFromBytes(clicks));
 		}
 
 		/// <summary>
@@ -114,7 +114,6 @@ namespace Hosta.Crypto
 				{
 					// Generate a new key
 					secret.New();
-					state++;
 				}
 
 				byte[] localToken = LocalToken;
@@ -131,10 +130,16 @@ namespace Hosta.Crypto
 				var package = crypter.Package(box);
 
 				// If back to equal state
-				if (state == State.Equal)
+				if (state == State.Behind)
 				{
 					secret.Turn(foreignToken);
 					UpdateEncryptRatchetClicks();
+					state++;
+				}
+				else if (state == State.Equal)
+				{
+					UpdateEncryptRatchetClicks();
+					state++;
 				}
 
 				return package;
@@ -176,21 +181,17 @@ namespace Hosta.Crypto
 
 				if (token.IsDifferentTo(foreignToken))
 				{
-					// If ahead
+					foreignToken = token;
 					if (state == State.Ahead)
 					{
-						foreignToken = token;
 						secret.Turn(foreignToken);
-						UpdateEncryptRatchetClicks();
-						state--;
+						UpdateDecryptRatchetClicks();
 					}
 					else if (state == State.Equal)
 					{
-						foreignToken = token;
-						secret.Turn(foreignToken);
 						UpdateDecryptRatchetClicks();
-						state--;
 					}
+					state--;
 				}
 				return plainblob;
 			}

@@ -27,17 +27,18 @@ namespace Hosta.Net
 
 			Task.WaitAll(a, b);
 
-			a = sc2.Send(Encode("hello"));
-			b = sc2.Send(Encode("hello1"));
-			var c = sc2.Send(Encode("hello2"));
-			var d = sc2.Send(Encode("hello3"));
-			var e = sc1.Send(Encode("hello4"));
-			var f = sc2.Send(Encode("hello5"));
+			sc1.Send(Encode("hello1")).Wait();
+			Console.WriteLine(Decode(sc2.Receive().Result));
 
+			sc2.Send(Encode("hello2")).Wait();
+			sc2.Send(Encode("hello3")).Wait();
 			Console.WriteLine(Decode(sc1.Receive().Result));
 			Console.WriteLine(Decode(sc1.Receive().Result));
-			Console.WriteLine(Decode(sc1.Receive().Result));
-			Console.WriteLine(Decode(sc1.Receive().Result));
+
+			sc1.Send(Encode("hello4")).Wait();
+			sc1.Send(Encode("hello5")).Wait();
+			Console.WriteLine(Decode(sc2.Receive().Result));
+			sc2.Send(Encode("hello6")).Wait();
 			Console.WriteLine(Decode(sc2.Receive().Result));
 			Console.WriteLine(Decode(sc1.Receive().Result));
 		}

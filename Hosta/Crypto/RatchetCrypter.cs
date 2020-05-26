@@ -12,39 +12,36 @@ namespace Hosta.Crypto
 	/// <summary>
 	/// Used to create and open AES-encrypted verifiable packages.
 	/// </summary>
-	public class AesCrypter : IDisposable
+	public class RatchetCrypter : IDisposable
 	{
-		/// <summary>
-		/// Internal key used to encrypt and decrypt.
-		/// </summary>
-		private byte[] key;
-
 		public const int KEY_SIZE = 32;
 
 		public const int IV_SIZE = 16;
 
-		/// <summary>
-		/// Sets the key, if in the correct format.
-		/// </summary>
-		public byte[] Key {
+		private readonly HashRatchet encryptRatchet = new HashRatchet();
+		private readonly HashRatchet decryptRatchet = new HashRatchet();
+
+		public byte[] EncryptClicks {
 			set {
-				ThrowIfDisposed();
-				if (value.Length != KEY_SIZE)
-				{
-					throw new CryptoParameterException("Key was not the correct length!");
-				}
-				key = value;
+				encryptRatchet.Clicks = value;
+			}
+		}
+
+		public byte[] DecryptClicks {
+			set {
+				decryptRatchet.Clicks = value;
 			}
 		}
 
 		/// <summary>
 		/// Creates a new AesEncryptor.
 		/// </summary>
-		/// <param name="key">The key used to encrypt and decrypt data.</param>
-		public AesCrypter(byte[] key = null)
+		/// <param name="encryptKey">The starting encrypt key.</param>
+		/// <param name="encryptKey">The starting decrypt key.</param>
+		public RatchetCrypter(byte[] encryptKey, byte[] decryptKey)
 		{
-			if (key != null) Key = key;
-			else Key = SecureRandomGenerator.GetBytes(KEY_SIZE);
+			encryptRatchet.Clicks = encryptKey;
+			decryptRatchet.Clicks = decryptKey;
 		}
 
 		/// <summary>
@@ -54,11 +51,14 @@ namespace Hosta.Crypto
 		/// <returns></returns>
 		public byte[] Package(byte[] plainblob)
 		{
+			encryptRatchet.Turn();
+			byte[] key = encryptRatchet.Output;
+
 			// Generate an IV
 			byte[] head = SecureRandomGenerator.GetBytes(IV_SIZE);
 
 			// Encrypt the plaintext
-			byte[] body = Encrypt(plainblob, head);
+			byte[] body = Encrypt(plainblob, key, head);
 
 			// Prepend the IV to the ciphertext
 			byte[] headAndBody = new byte[head.Length + body.Length];
@@ -83,7 +83,7 @@ namespace Hosta.Crypto
 		/// <param name="iv">The IV to use.</param>
 		/// <exception cref="CryptoParameterException" />
 		/// <returns></returns>
-		public byte[] Encrypt(byte[] plainblob, byte[] iv)
+		public byte[] Encrypt(byte[] plainblob, byte[] key, byte[] iv)
 		{
 			ThrowIfDisposed();
 
@@ -116,6 +116,9 @@ namespace Hosta.Crypto
 		/// <returns></returns>
 		public byte[] Unpackage(byte[] package)
 		{
+			decryptRatchet.Turn();
+			byte[] key = decryptRatchet.Output;
+
 			// Separate the tail from the rest of the package
 			byte[] headAndBody = new byte[package.Length - Hasher.OUTPUT_SIZE];
 			Array.Copy(package, 0, headAndBody, 0, headAndBody.Length);
@@ -138,7 +141,7 @@ namespace Hosta.Crypto
 			Array.Copy(headAndBody, head.Length, body, 0, body.Length);
 
 			// Decrypt the cipher-text
-			byte[] plainblob = Decrypt(body, head);
+			byte[] plainblob = Decrypt(body, key, head);
 
 			return plainblob;
 		}
@@ -152,7 +155,7 @@ namespace Hosta.Crypto
 		/// <exception cref="CryptoParameterException" />
 		/// <exception cref="FormatException" />
 		/// <returns>The decrypted plainblob.</returns>
-		public byte[] Decrypt(byte[] cipherblob, byte[] iv)
+		public byte[] Decrypt(byte[] cipherblob, byte[] key, byte[] iv)
 		{
 			ThrowIfDisposed();
 
@@ -204,13 +207,8 @@ namespace Hosta.Crypto
 			if (disposing)
 			{
 				// Disposed of managed resources
-				if (key != null)
-				{
-					for (int i = 0; i < key.Length; i++)
-					{
-						key[i] = 0;
-					}
-				}
+				if (encryptRatchet != null) encryptRatchet.Dispose();
+				if (decryptRatchet != null) decryptRatchet.Dispose();
 			}
 
 			disposed = true;

@@ -3,6 +3,7 @@ using Hosta.Exceptions;
 using Hosta.Tools;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -15,6 +16,9 @@ namespace Hosta.Net
 	/// </summary>
 	public class SecureConversation : IConversable
 	{
+		private static byte[] right = SecureRandomGenerator.GetBytes(32);
+		private static byte[] left = SecureRandomGenerator.GetBytes(32);
+
 		/// <summary>
 		/// The insecure conversation to talk over.
 		/// </summary>
@@ -23,7 +27,7 @@ namespace Hosta.Net
 		/// <summary>
 		/// The shared AES and HMAC key.
 		/// </summary>
-		private DoubleRatchetCrypter crypter;
+		private RatchetCrypter crypter;
 
 		/// <summary>
 		/// Ensures that only one task can send or receive at a time.
@@ -49,16 +53,12 @@ namespace Hosta.Net
 		/// (rather than accepted).
 		/// </param>
 		/// <returns>An awaitable task.</returns>
-		public async Task Establish(bool initiated)
+		public Task Establish(bool initiated)
 		{
 			try
 			{
-				crypter = new DoubleRatchetCrypter(initiated);
-
-				var sent = insecureConversation.Send(crypter.LocalToken);
-				crypter.Establish(await insecureConversation.Receive());
-
-				await sent;
+				crypter = new RatchetCrypter(initiated ? right : left, initiated ? left : right);
+				return Task.CompletedTask;
 			}
 			catch (Exception e)
 			{

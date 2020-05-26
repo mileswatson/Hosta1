@@ -22,25 +22,26 @@ namespace Hosta.Net
 			ls1.Connect(ls2);
 			ls2.Connect(ls1);
 
-			var a = sc1.Establish(false);
-			var b = sc2.Establish(true);
+			sc1.Establish(true);
+			sc2.Establish(false);
 
-			Task.WaitAll(a, b);
+			sc1.Send(Encode("r1")).Wait();
+			sc1.Send(Encode("r2")).Wait();
 
-			sc1.Send(Encode("hello1")).Wait();
+			sc2.Send(Encode("l1")).Wait();
+			Console.WriteLine(Decode(sc2.Receive().Result));
+			sc2.Send(Encode("l2")).Wait();
 			Console.WriteLine(Decode(sc2.Receive().Result));
 
-			sc2.Send(Encode("hello2")).Wait();
-			sc2.Send(Encode("hello3")).Wait();
 			Console.WriteLine(Decode(sc1.Receive().Result));
+			sc1.Send(Encode("r3")).Wait();
 			Console.WriteLine(Decode(sc1.Receive().Result));
+			sc1.Send(Encode("r4")).Wait();
+			sc1.Send(Encode("r5")).Wait();
 
-			sc1.Send(Encode("hello4")).Wait();
-			sc1.Send(Encode("hello5")).Wait();
 			Console.WriteLine(Decode(sc2.Receive().Result));
-			sc2.Send(Encode("hello6")).Wait();
 			Console.WriteLine(Decode(sc2.Receive().Result));
-			Console.WriteLine(Decode(sc1.Receive().Result));
+			Console.WriteLine(Decode(sc2.Receive().Result));
 		}
 
 		public static byte[] Encode(string data)

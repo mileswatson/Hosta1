@@ -24,20 +24,20 @@ namespace Hosta.Crypto
 		public byte[] Output {
 			get {
 				ThrowIfDisposed();
-				return Hasher.Hash(secret.Reverse<byte>().ToArray());
+				return Hasher.HMAC(new byte[32], secret);
 			}
 		}
 
-		public HashRatchet(byte[] sharedSecret)
+		public HashRatchet(byte[] clicks = null)
 		{
-			if (sharedSecret == null) sharedSecret = new byte[Hasher.OUTPUT_SIZE];
-			this.secret = sharedSecret;
+			if (clicks == null) clicks = new byte[Hasher.OUTPUT_SIZE];
+			this.secret = clicks;
 		}
 
 		public void Turn()
 		{
 			ThrowIfDisposed();
-			secret = Hasher.HMAC(clicks, secret);
+			secret = Hasher.HMAC(secret, clicks);
 		}
 
 		//// Implements IDisposable
@@ -66,6 +66,13 @@ namespace Hosta.Crypto
 					for (int i = 0; i < secret.Length; i++)
 					{
 						secret[i] = 0;
+					}
+				}
+				if (clicks != null)
+				{
+					for (int i = 0; i < clicks.Length; i++)
+					{
+						clicks[i] = 0;
 					}
 				}
 			}

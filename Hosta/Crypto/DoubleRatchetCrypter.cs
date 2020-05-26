@@ -10,6 +10,7 @@ using Hosta.Tools;
 
 namespace Hosta.Crypto
 {
+	/*
 	/// <summary>
 	/// Facilitates encrypting and decrypting using
 	/// separate key ratchets for encryption and decryption.
@@ -126,20 +127,19 @@ namespace Hosta.Crypto
 
 				// Encrypts the data
 				encryptRatchet.Turn();
-				using var crypter = new AesCrypter(encryptRatchet.Output);
+				using var crypter = new RatchetCrypter(encryptRatchet.Output);
 				var package = crypter.Package(box);
 
-				// If back to equal state
-				if (state == State.Behind)
+				if (state == State.Behind)  // If returning to equal state
 				{
-					secret.Turn(foreignToken);
-					UpdateEncryptRatchetClicks();
-					state++;
+					secret.Turn(foreignToken);      // Both foreign and local have changed, so turn ratchet.
+					UpdateEncryptRatchetClicks();   // Indicator has been sent, begin new encryption key next message
+					state = State.Equal;
 				}
-				else if (state == State.Equal)
+				else if (state == State.Equal) // If moving ahead
 				{
-					UpdateEncryptRatchetClicks();
-					state++;
+					UpdateEncryptRatchetClicks();   // New encryption can continue next message
+					state = State.Ahead;
 				}
 
 				return package;
@@ -165,7 +165,7 @@ namespace Hosta.Crypto
 			{
 				decryptRatchet.Turn();
 
-				using var crypter = new AesCrypter(decryptRatchet.Output);
+				using var crypter = new RatchetCrypter(decryptRatchet.Output);
 				byte[] box = crypter.Unpackage(package);
 
 				byte[] localTokenLength = new byte[4];
@@ -182,16 +182,17 @@ namespace Hosta.Crypto
 				if (token.IsDifferentTo(foreignToken))
 				{
 					foreignToken = token;
-					if (state == State.Ahead)
+					if (state == State.Ahead)   // If returning to equal
 					{
-						secret.Turn(foreignToken);
-						UpdateDecryptRatchetClicks();
+						secret.Turn(foreignToken);  // Both local and foreign have been changed, turn ratchet.
+						UpdateDecryptRatchetClicks();   // Begin using
+						state = State.Equal;
 					}
-					else if (state == State.Equal)
+					else if (state == State.Equal) // If falling behind
 					{
-						UpdateDecryptRatchetClicks();
+						UpdateDecryptRatchetClicks(); // decrypt ratchet can update now
+						state = State.Behind;
 					}
-					state--;
 				}
 				return plainblob;
 			}
@@ -230,4 +231,5 @@ namespace Hosta.Crypto
 			disposed = true;
 		}
 	}
+	*/
 }

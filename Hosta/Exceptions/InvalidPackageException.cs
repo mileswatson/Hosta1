@@ -5,13 +5,13 @@ namespace Hosta.Exceptions
 	/// <summary>
 	/// Indicates a secure message has been tampered with, could possibly indicate DoS.
 	/// </summary>
-	internal class TamperedPackageException : Exception
+	internal class InvalidPackageException : Exception
 	{
 		/// <summary>
-		/// Constructs a new TamperedPackageException.
+		/// Constructs a new InvalidPackageException.
 		/// </summary>
 		/// <param name="message">Exception details.</param>
-		public TamperedPackageException(string message) : base(message)
+		public InvalidPackageException(string message) : base(message)
 		{
 		}
 	}

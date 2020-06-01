@@ -17,8 +17,8 @@ namespace Hosta.Net
 			using var ls2 = new LocalStream();
 			using var cs1 = new ConversationStreamer(ls1);
 			using var cs2 = new ConversationStreamer(ls2);
-			using var sc1 = new SecureConversation(cs1);
-			using var sc2 = new SecureConversation(cs2);
+			using var sc1 = new PrivateConversation(cs1);
+			using var sc2 = new PrivateConversation(cs2);
 			ls1.Connect(ls2);
 			ls2.Connect(ls1);
 

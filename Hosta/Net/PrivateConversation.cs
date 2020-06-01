@@ -14,7 +14,7 @@ namespace Hosta.Net
 	/// Used to establish and send messages over an encrypted session.
 	/// Does not guarantee message order unless commands are awaited.
 	/// </summary>
-	public class SecureConversation : IConversable
+	public class PrivateConversation : IConversable
 	{
 		private static byte[] right = SecureRandomGenerator.GetBytes(32);
 		private static byte[] left = SecureRandomGenerator.GetBytes(32);
@@ -40,7 +40,7 @@ namespace Hosta.Net
 		/// <param name="insecureConversation">
 		/// The insecure conversation to talk over.
 		/// </param>
-		public SecureConversation(IConversable insecureConversation)
+		public PrivateConversation(IConversable insecureConversation)
 		{
 			this.insecureConversation = insecureConversation;
 		}
@@ -79,7 +79,7 @@ namespace Hosta.Net
 			await accessQueue.GetPass();
 			try
 			{
-				byte[] secureMessage = crypter.Package(data);
+				byte[] secureMessage = crypter.Encrypt(data);
 				await insecureConversation.Send(secureMessage);
 			}
 			catch (Exception e)
@@ -107,7 +107,7 @@ namespace Hosta.Net
 			try
 			{
 				byte[] package = await insecureConversation.Receive();
-				return crypter.Unpackage(package);
+				return crypter.Decrypt(package);
 			}
 			catch (Exception e)
 			{

@@ -156,7 +156,7 @@ namespace Hosta.Crypto
 		/// ratchet.
 		/// </summary>
 		/// <param name="package">The secure message package.</param>
-		/// <exception cref="TamperedPackageException"/>
+		/// <exception cref="InvalidPackageException"/>
 		/// <returns>The package contents.</returns>
 		public byte[] Unpackage(byte[] package)
 		{

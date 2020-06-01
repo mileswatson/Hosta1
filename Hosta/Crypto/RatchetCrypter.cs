@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -15,8 +16,8 @@ namespace Hosta.Crypto
 	public class RatchetCrypter : IDisposable
 	{
 		public const int KEY_SIZE = 32;
-
-		public const int IV_SIZE = 16;
+		public const int BLOCK_SIZE = 16;
+		public const int NONCE_SIZE = 12;
 
 		private readonly HashRatchet encryptRatchet = new HashRatchet();
 		private readonly HashRatchet decryptRatchet = new HashRatchet();
@@ -45,145 +46,89 @@ namespace Hosta.Crypto
 		}
 
 		/// <summary>
-		/// Constructs a secure package.
-		/// </summary>
-		/// <param name="plainblob">The data to secure.</param>
-		/// <returns></returns>
-		public byte[] Package(byte[] plainblob)
-		{
-			encryptRatchet.Turn();
-			byte[] key = encryptRatchet.Output;
-
-			// Generate an IV
-			byte[] head = SecureRandomGenerator.GetBytes(IV_SIZE);
-
-			// Encrypt the plaintext
-			byte[] body = Encrypt(plainblob, key, head);
-
-			// Prepend the IV to the ciphertext
-			byte[] headAndBody = new byte[head.Length + body.Length];
-			Array.Copy(head, 0, headAndBody, 0, head.Length);
-			Array.Copy(body, 0, headAndBody, head.Length, body.Length);
-
-			// Calculate the HMAC of the first two parts
-			byte[] tail = Hasher.HMAC(headAndBody, key);
-
-			// Construct the final package
-			byte[] package = new byte[headAndBody.Length + tail.Length];
-			Array.Copy(headAndBody, 0, package, 0, headAndBody.Length);
-			Array.Copy(tail, 0, package, headAndBody.Length, tail.Length);
-
-			return package;
-		}
-
-		/// <summary>
-		/// Pads data using PKCS7, then encrypts using AES256 in CBC mode.
+		/// Encrypts data using AES-GCM (includes MAC).
 		/// </summary>
 		/// <param name="plainblob">The plainblob to encrypt.</param>
-		/// <param name="iv">The IV to use.</param>
 		/// <exception cref="CryptoParameterException" />
 		/// <returns></returns>
-		public byte[] Encrypt(byte[] plainblob, byte[] key, byte[] iv)
+		public byte[] Encrypt(byte[] plainblob)
 		{
 			ThrowIfDisposed();
 
-			// Checks that the iv is of the correct length.
-			if (iv.Length != IV_SIZE)
-			{
-				throw new CryptoParameterException("IV is not the correct size!");
-			}
+			// Generate the new encryption key
+			encryptRatchet.Turn();
+			byte[] key = encryptRatchet.Output;
 
-			using var aes = new AesManaged()
-			{
-				Key = key,
-				IV = iv,
-				Mode = CipherMode.CBC,
-				Padding = PaddingMode.PKCS7
-			};
+			// Generate the random nonce
+			byte[] nonce = SecureRandomGenerator.GetBytes(NONCE_SIZE);
 
-			using MemoryStream cipherstream = new MemoryStream();
-			using CryptoStream cryptostream = new CryptoStream(cipherstream, aes.CreateEncryptor(), CryptoStreamMode.Write);
-			cryptostream.Write(plainblob, 0, plainblob.Length);
-			cryptostream.Close();
+			// Create the empty partitions to be filled
+			byte[] cipherblob = new byte[plainblob.Length];
+			byte[] tag = new byte[16];
 
-			return cipherstream.ToArray();
+			// Encrypt the data, fill the cipherblob and tag
+			using var aes = new AesGcm(key);
+			aes.Encrypt(nonce, plainblob, cipherblob, tag);
+
+			// Combine partitions into a package and return
+			return Combine(tag, nonce, cipherblob);
 		}
 
 		/// <summary>
-		/// Unpackages a secure package.
+		/// Decrypts data using AES-GCM (and verifies the MAC).
 		/// </summary>
-		/// <param name="package"></param>
-		/// <returns></returns>
-		public byte[] Unpackage(byte[] package)
+		/// <param name="cipherblob">The cipherblob to decrypt.</param>
+		/// <exception cref="CryptoParameterException" />
+		/// <exception cref="FormatException" />
+		/// <returns>The decrypted plainblob.</returns>
+		public byte[] Decrypt(byte[] package)
 		{
+			ThrowIfDisposed();
+
+			// Check that package has a valid length
+			if (package.Length - NONCE_SIZE - BLOCK_SIZE < 0) throw new InvalidPackageException("The package size was invalid!");
+
+			// Generate the new decrypt key
 			decryptRatchet.Turn();
 			byte[] key = decryptRatchet.Output;
 
-			// Separate the tail from the rest of the package
-			byte[] headAndBody = new byte[package.Length - Hasher.OUTPUT_SIZE];
-			Array.Copy(package, 0, headAndBody, 0, headAndBody.Length);
+			// Create empty space for the partitions
+			byte[] tag = new byte[BLOCK_SIZE];
+			byte[] nonce = new byte[NONCE_SIZE];
+			byte[] cipherblob = new byte[package.Length - BLOCK_SIZE - NONCE_SIZE];
+			byte[] plainblob = new byte[cipherblob.Length];
 
-			byte[] tail = new byte[Hasher.OUTPUT_SIZE];
-			Array.Copy(package, headAndBody.Length, tail, 0, tail.Length);
+			// Populate the partitions
+			Split(package, tag, nonce, cipherblob);
 
-			// Verify the integrity of the message
-			byte[] actualHMAC = Hasher.HMAC(headAndBody, key);
-			if (!tail.SequenceEqual(actualHMAC))
-			{
-				throw new TamperedPackageException("HMAC does not match received package.");
-			}
-
-			// Separate the IV and ciphertext
-			byte[] head = new byte[IV_SIZE];
-			Array.Copy(headAndBody, 0, head, 0, head.Length);
-
-			byte[] body = new byte[headAndBody.Length - IV_SIZE];
-			Array.Copy(headAndBody, head.Length, body, 0, body.Length);
-
-			// Decrypt the cipher-text
-			byte[] plainblob = Decrypt(body, key, head);
+			// Decrypt the cipherblob
+			using var aes = new AesGcm(key);
+			aes.Decrypt(nonce, cipherblob, tag, plainblob);
 
 			return plainblob;
 		}
 
-		/// <summary>
-		/// Decrypts data using AES256 in CBC mode,
-		/// and strips it of PKCS7 padding.
-		/// </summary>
-		/// <param name="cipherblob">The cipherblob to decrypt.</param>
-		/// <param name="iv">The IV to use.</param>
-		/// <exception cref="CryptoParameterException" />
-		/// <exception cref="FormatException" />
-		/// <returns>The decrypted plainblob.</returns>
-		public byte[] Decrypt(byte[] cipherblob, byte[] key, byte[] iv)
+		public static byte[] Combine(params byte[][] sources)
 		{
-			ThrowIfDisposed();
+			List<byte> destination = new List<byte>();
+			foreach (byte[] blob in sources) destination.AddRange(blob);
+			return destination.ToArray();
+		}
 
-			// Check that the IV has the correct length
-			if (iv.Length != IV_SIZE)
+		public static void Split(byte[] source, params byte[][] destinations)
+		{
+			// Check that the combined destinations are as big as the source
+			int total = 0;
+			foreach (byte[] destination in destinations) total += destination.Length;
+			if (total != source.Length) throw new InvalidPackageException("Package cannot be split into the correct sized parts.");
+
+			// Copy each part over
+			int index = 0;
+			foreach (byte[] destination in destinations)
 			{
-				throw new CryptoParameterException("IV does not have the correct size.");
+				Array.Copy(source, index, destination, 0, destination.Length);
+				index += destination.Length;
 			}
-
-			// Check that the cipherblob length is a multiple of the block size in bytes
-			if (cipherblob.Length % IV_SIZE != 0)
-			{
-				throw new FormatException("Cipherblob length is not a multiple of the IV size!");
-			}
-
-			using var aes = new AesManaged()
-			{
-				Key = key,
-				IV = iv,
-				Mode = CipherMode.CBC,
-				Padding = PaddingMode.PKCS7
-			};
-
-			using MemoryStream plainstream = new MemoryStream();
-			using CryptoStream cryptostream = new CryptoStream(plainstream, aes.CreateDecryptor(), CryptoStreamMode.Write);
-			cryptostream.Write(cipherblob, 0, cipherblob.Length);
-			cryptostream.Close();
-			return plainstream.ToArray();
 		}
 
 		//// Implements IDisposable

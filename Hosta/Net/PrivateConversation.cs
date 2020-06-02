@@ -16,8 +16,8 @@ namespace Hosta.Net
 	/// </summary>
 	public class PrivateConversation : IConversable
 	{
-		private static byte[] right = SecureRandomGenerator.GetBytes(32);
-		private static byte[] left = SecureRandomGenerator.GetBytes(32);
+		private static readonly byte[] right = SecureRandomGenerator.GetBytes(32);
+		private static readonly byte[] left = SecureRandomGenerator.GetBytes(32);
 
 		/// <summary>
 		/// The insecure conversation to talk over.
@@ -143,7 +143,6 @@ namespace Hosta.Net
 				// Dispose of managed resources
 				if (accessQueue != null) accessQueue.Dispose();
 				if (insecureConversation != null) insecureConversation.Dispose();
-				if (crypter != null) crypter.Dispose();
 			}
 
 			disposed = true;

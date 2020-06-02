@@ -7,13 +7,14 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Hosta.Exceptions;
+using Hosta.Tools;
 
 namespace Hosta.Crypto
 {
 	/// <summary>
 	/// Used to create and open AES-encrypted verifiable packages.
 	/// </summary>
-	public class RatchetCrypter : IDisposable
+	public class RatchetCrypter
 	{
 		public const int KEY_SIZE = 32;
 		public const int BLOCK_SIZE = 16;
@@ -22,12 +23,18 @@ namespace Hosta.Crypto
 		private readonly HashRatchet encryptRatchet = new HashRatchet();
 		private readonly HashRatchet decryptRatchet = new HashRatchet();
 
+		/// <summary>
+		/// Sets the number of clicks to turn on the encrypt ratchet.
+		/// </summary>
 		public byte[] EncryptClicks {
 			set {
 				encryptRatchet.Clicks = value;
 			}
 		}
 
+		/// <summary>
+		/// Sets the number of clicks to turn on the decrypt ratchet.
+		/// </summary>
 		public byte[] DecryptClicks {
 			set {
 				decryptRatchet.Clicks = value;
@@ -49,12 +56,9 @@ namespace Hosta.Crypto
 		/// Encrypts data using AES-GCM (includes MAC).
 		/// </summary>
 		/// <param name="plainblob">The plainblob to encrypt.</param>
-		/// <exception cref="CryptoParameterException" />
-		/// <returns></returns>
+		/// <returns>The encrypted package.</returns>
 		public byte[] Encrypt(byte[] plainblob)
 		{
-			ThrowIfDisposed();
-
 			// Generate the new encryption key
 			encryptRatchet.Turn();
 			byte[] key = encryptRatchet.Output;
@@ -71,20 +75,17 @@ namespace Hosta.Crypto
 			aes.Encrypt(nonce, plainblob, cipherblob, tag);
 
 			// Combine partitions into a package and return
-			return Combine(tag, nonce, cipherblob);
+			return Blobs.Combine(tag, nonce, cipherblob);
 		}
 
 		/// <summary>
 		/// Decrypts data using AES-GCM (and verifies the MAC).
 		/// </summary>
-		/// <param name="cipherblob">The cipherblob to decrypt.</param>
-		/// <exception cref="CryptoParameterException" />
-		/// <exception cref="FormatException" />
+		/// <param name="package">The encrypted package to deconstruct and decrypt.</param>
+		/// <exception cref="InvalidPackageException"/>
 		/// <returns>The decrypted plainblob.</returns>
 		public byte[] Decrypt(byte[] package)
 		{
-			ThrowIfDisposed();
-
 			// Check that package has a valid length
 			if (package.Length - NONCE_SIZE - BLOCK_SIZE < 0) throw new InvalidPackageException("The package size was invalid!");
 
@@ -99,64 +100,20 @@ namespace Hosta.Crypto
 			byte[] plainblob = new byte[cipherblob.Length];
 
 			// Populate the partitions
-			Split(package, tag, nonce, cipherblob);
+			Blobs.Split(package, tag, nonce, cipherblob);
 
 			// Decrypt the cipherblob
-			using var aes = new AesGcm(key);
-			aes.Decrypt(nonce, cipherblob, tag, plainblob);
+			try
+			{
+				using var aes = new AesGcm(key);
+				aes.Decrypt(nonce, cipherblob, tag, plainblob);
+			}
+			catch
+			{
+				throw new InvalidPackageException("The message could not be decrypted!");
+			}
 
 			return plainblob;
-		}
-
-		public static byte[] Combine(params byte[][] sources)
-		{
-			List<byte> destination = new List<byte>();
-			foreach (byte[] blob in sources) destination.AddRange(blob);
-			return destination.ToArray();
-		}
-
-		public static void Split(byte[] source, params byte[][] destinations)
-		{
-			// Check that the combined destinations are as big as the source
-			int total = 0;
-			foreach (byte[] destination in destinations) total += destination.Length;
-			if (total != source.Length) throw new InvalidPackageException("Package cannot be split into the correct sized parts.");
-
-			// Copy each part over
-			int index = 0;
-			foreach (byte[] destination in destinations)
-			{
-				Array.Copy(source, index, destination, 0, destination.Length);
-				index += destination.Length;
-			}
-		}
-
-		//// Implements IDisposable
-
-		private bool disposed = false;
-
-		private void ThrowIfDisposed()
-		{
-			if (disposed) throw new ObjectDisposedException("SymmetricEncryptor has been disposed!");
-		}
-
-		public void Dispose()
-		{
-			Dispose(true);
-		}
-
-		protected virtual void Dispose(bool disposing)
-		{
-			if (disposed) return;
-
-			if (disposing)
-			{
-				// Disposed of managed resources
-				if (encryptRatchet != null) encryptRatchet.Dispose();
-				if (decryptRatchet != null) decryptRatchet.Dispose();
-			}
-
-			disposed = true;
 		}
 	}
 }

@@ -29,7 +29,7 @@ namespace Hosta.Crypto
 		}
 
 		/// <summary>
-		/// Initialises a new instance of a KeyExchanger
+		/// Initialises a new instance of ECDHRatchet.
 		/// </summary>
 		public ECDHRatchet()
 		{

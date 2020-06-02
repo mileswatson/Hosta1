@@ -10,8 +10,8 @@ namespace Hosta.Net
 	{
 		public void Bind(string bindingString);
 
-		public Task<IStreamable> AcceptConnection(Task cancelled);
+		public Task<IStreamable> AcceptConnection();
 
-		public Task<IStreamable> Connect(string connectionString);
+		public Task<IStreamable> RequestConnection(string connectionString);
 	}
 }

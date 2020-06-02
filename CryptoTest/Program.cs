@@ -13,17 +13,20 @@ namespace Hosta.Net
 	{
 		public static void Main()
 		{
-			using var ls1 = new LocalStream();
-			using var ls2 = new LocalStream();
-			using var cs1 = new ConversationStreamer(ls1);
-			using var cs2 = new ConversationStreamer(ls2);
-			using var sc1 = new PrivateConversation(cs1);
-			using var sc2 = new PrivateConversation(cs2);
-			ls1.Connect(ls2);
-			ls2.Connect(ls1);
+			using var lsc1 = new LocalStreamConnector();
+			using var lsc2 = new LocalStreamConnector();
 
-			sc1.Establish(true);
-			sc2.Establish(false);
+			lsc2.Bind("address1234");
+			var a = lsc1.RequestConnection("address1234");
+			var b = lsc2.AcceptConnection();
+
+			using var sc1 = new PrivateConversation(a.Result);
+			using var sc2 = new PrivateConversation(b.Result);
+
+			var c = sc1.Establish();
+			var d = sc2.Establish();
+
+			Task.WaitAll(c, d);
 
 			sc1.Send(Encode("r1")).Wait();
 			sc1.Send(Encode("r2")).Wait();

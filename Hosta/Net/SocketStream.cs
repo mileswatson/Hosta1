@@ -22,14 +22,29 @@ namespace Hosta.Net
 		private readonly AccessQueue writeQueue = new AccessQueue(1);
 
 		/// <summary>
+		/// Indicates whether the stream was requested (true) or accepted (false).
+		/// </summary>
+		private readonly bool isRequester;
+
+		/// <summary>
+		/// Indicates whether the stream was requested (true) or accepted (false).
+		/// </summary>
+		public bool IsRequester {
+			get {
+				return isRequester;
+			}
+		}
+
+		/// <summary>
 		/// Constructs a new SocketStream from a connected socket.
 		/// </summary>
 		/// <param name="connectedSocket">
 		/// The underlying socket to use.
 		/// </param>
-		public SocketStream(Socket connectedSocket)
+		public SocketStream(bool isRequester, Socket connectedSocket)
 		{
 			socket = connectedSocket;
+			this.isRequester = isRequester;
 		}
 
 		/// <summary>

@@ -12,7 +12,7 @@ namespace Hosta.Net
 	/// Handles the sending and receiving of messages on stream.
 	/// Does not guarantee message order if commands are not awaited.
 	/// </summary>
-	public class ConversationStreamer : IConversable
+	public class ConversationStreamer : IDisposable
 	{
 		/// <summary>
 		/// The underlying streams to read and write to.

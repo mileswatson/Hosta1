@@ -67,12 +67,12 @@ namespace HostaTests.Crypto
 			// Test a->b again
 			byte[] package2 = a.Encrypt(plainblob);
 			byte[] newPlainblob2 = b.Decrypt(package2);
-			CollectionAssert.AreEqual(plainblob, newPlainblob1);
+			CollectionAssert.AreEqual(plainblob, newPlainblob2);
 
 			// Test b->a
 			byte[] package3 = a.Encrypt(plainblob);
 			byte[] newPlainblob3 = b.Decrypt(package3);
-			CollectionAssert.AreEqual(plainblob, newPlainblob1);
+			CollectionAssert.AreEqual(plainblob, newPlainblob3);
 
 			// Check that the packages are different
 			CollectionAssert.AreNotEqual(package1, package2);

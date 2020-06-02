@@ -8,6 +8,10 @@ namespace Hosta.Net
 	/// </summary>
 	public interface IStreamable : IDisposable
 	{
+		public bool IsRequester {
+			get;
+		}
+
 		/// <summary>
 		/// Writes a byte[] to the output stream.
 		/// </summary>

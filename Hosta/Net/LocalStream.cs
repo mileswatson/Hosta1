@@ -34,10 +34,25 @@ namespace Hosta.Net
 		private readonly AccessQueue writeQueue = new AccessQueue(1);
 
 		/// <summary>
+		/// Indicates whether the stream was requested (true) or accepted (false).
+		/// </summary>
+		private readonly bool isRequester;
+
+		/// <summary>
+		/// Indicates whether the stream was requested (true) or accepted (false).
+		/// </summary>
+		public bool IsRequester {
+			get {
+				return isRequester;
+			}
+		}
+
+		/// <summary>
 		/// Constructs a new LocalStream.
 		/// </summary>
-		public LocalStream()
+		public LocalStream(bool isRequester)
 		{
+			this.isRequester = isRequester;
 		}
 
 		/// <summary>

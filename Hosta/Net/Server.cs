@@ -80,7 +80,7 @@ namespace Hosta.Net
 				try
 				{
 					var s = ar.AsyncState as Socket;
-					var socketStream = new SocketStream(s.EndAccept(ar));
+					var socketStream = new SocketStream(false, s.EndAccept(ar));
 					tcs.SetResult(new ConversationStreamer(socketStream));
 				}
 				catch (Exception e)

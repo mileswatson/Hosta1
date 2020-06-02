@@ -14,7 +14,7 @@ namespace Hosta.Net
 	/// Used to establish and send messages over an encrypted session.
 	/// Does not guarantee message order unless commands are awaited.
 	/// </summary>
-	public class PrivateConversation : IConversable
+	public class PrivateConversation : IDisposable
 	{
 		private static readonly byte[] right = SecureRandomGenerator.GetBytes(32);
 		private static readonly byte[] left = SecureRandomGenerator.GetBytes(32);
@@ -22,7 +22,7 @@ namespace Hosta.Net
 		/// <summary>
 		/// The insecure conversation to talk over.
 		/// </summary>
-		private readonly IConversable insecureConversation;
+		private readonly ConversationStreamer insecureConversation;
 
 		/// <summary>
 		/// The shared AES and HMAC key.
@@ -35,14 +35,20 @@ namespace Hosta.Net
 		private readonly AccessQueue accessQueue = new AccessQueue(1);
 
 		/// <summary>
-		/// Constructs a new SecureConversation over an insecure conversation.
+		/// Marks whether the underlying stream was a requester or an accepter.
+		/// </summary>
+		public readonly bool isRequester;
+
+		/// <summary>
+		/// Constructs a new SecureConversation over an insecure ConversationStreamer.
 		/// </summary>
 		/// <param name="insecureConversation">
 		/// The insecure conversation to talk over.
 		/// </param>
-		public PrivateConversation(IConversable insecureConversation)
+		public PrivateConversation(IStreamable stream)
 		{
-			this.insecureConversation = insecureConversation;
+			this.insecureConversation = new ConversationStreamer(stream);
+			isRequester = stream.IsRequester;
 		}
 
 		/// <summary>
@@ -53,11 +59,11 @@ namespace Hosta.Net
 		/// (rather than accepted).
 		/// </param>
 		/// <returns>An awaitable task.</returns>
-		public Task Establish(bool initiated)
+		public Task Establish()
 		{
 			try
 			{
-				crypter = new RatchetCrypter(initiated ? right : left, initiated ? left : right);
+				crypter = new RatchetCrypter(isRequester ? right : left, isRequester ? left : right);
 				return Task.CompletedTask;
 			}
 			catch (Exception e)

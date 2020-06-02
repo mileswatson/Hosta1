@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Loader;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-
-using Hosta.Exceptions;
-using Hosta.Tools;
-
-namespace Hosta.Crypto
+﻿namespace Hosta.Crypto
 {
 	/*
 	/// <summary>

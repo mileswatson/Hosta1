@@ -1,9 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-using Hosta.Crypto;
-using Hosta.Exceptions;
+﻿using Hosta.Crypto;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Text;
-using System;
 
 namespace HostaTests.Crypto
 {

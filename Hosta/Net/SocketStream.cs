@@ -1,9 +1,7 @@
-﻿using System;
+﻿using Hosta.Tools;
+using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-
-using Hosta.Exceptions;
-using Hosta.Tools;
 
 namespace Hosta.Net
 {

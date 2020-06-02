@@ -7,91 +7,19 @@ using System;
 
 namespace HostaTests.Crypto
 {
-	/*
 	[TestClass]
-	public class AesCrypterTester
+	public class RatchetCrypterTester
 	{
-		[TestMethod]
+		private RatchetCrypter a;
+		private RatchetCrypter b;
+
+		[TestInitialize]
 		public void Constructor_Valid()
 		{
-			new RatchetCrypter(new byte[RatchetCrypter.KEY_SIZE]);
-		}
-
-		[TestMethod]
-		public void Constructor_InvalidKey()
-		{
-			Assert.ThrowsException<CryptoParameterException>(
-				() => new RatchetCrypter(new byte[0])
-			);
-			Assert.ThrowsException<CryptoParameterException>(
-				() => new RatchetCrypter(new byte[31])
-			);
-			Assert.ThrowsException<CryptoParameterException>(
-				() => new RatchetCrypter(new byte[33])
-			);
-			Assert.ThrowsException<CryptoParameterException>(
-				() => new RatchetCrypter(new byte[64])
-			);
-		}
-
-		[TestMethod]
-		public void Encrypt_InvalidIV()
-		{
-			byte[] key = SecureRandomGenerator.GetBytes(32);
-			using var se = new RatchetCrypter(key);
-
-			byte[] plainblob = SecureRandomGenerator.GetBytes(100);
-
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[0])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[RatchetCrypter.IV_SIZE - 1])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[RatchetCrypter.IV_SIZE + 1])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Encrypt(plainblob, new byte[RatchetCrypter.IV_SIZE * 2])
-			);
-		}
-
-		[TestMethod]
-		public void Decrypt_InvalidIV()
-		{
-			byte[] key = SecureRandomGenerator.GetBytes(32);
-			using var se = new RatchetCrypter(key);
-
-			byte[] cipherblob = SecureRandomGenerator.GetBytes(100);
-
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[0])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[RatchetCrypter.IV_SIZE - 1])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[RatchetCrypter.IV_SIZE + 1])
-			);
-			Assert.ThrowsException<CryptoParameterException>(() =>
-				se.Decrypt(cipherblob, new byte[RatchetCrypter.IV_SIZE * 2])
-			);
-		}
-
-		[TestMethod]
-		public void Decrypt_InvalidCipherblobLength()
-		{
-			byte[] key = SecureRandomGenerator.GetBytes(32);
-			using var se = new RatchetCrypter(key);
-
-			byte[] iv = SecureRandomGenerator.GetBytes(16);
-
-			Assert.ThrowsException<FormatException>(() =>
-				se.Decrypt(new byte[RatchetCrypter.IV_SIZE - 1], iv)
-			);
-			Assert.ThrowsException<FormatException>(() =>
-				se.Decrypt(new byte[RatchetCrypter.IV_SIZE + 1], iv)
-			);
+			byte[] left = SecureRandomGenerator.GetBytes(RatchetCrypter.KEY_SIZE);
+			byte[] right = SecureRandomGenerator.GetBytes(RatchetCrypter.KEY_SIZE);
+			a = new RatchetCrypter(left, right);
+			b = new RatchetCrypter(right, left);
 		}
 
 		[DataTestMethod]
@@ -102,30 +30,52 @@ namespace HostaTests.Crypto
 		[DataRow("Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test! Long text to encrypt so that multiple blocks are used in CBC mode - this is an important test!")]
 		public void RoundTrip_Text(string plaintext)
 		{
-			byte[] key = SecureRandomGenerator.GetBytes(32);
-			using var se = new RatchetCrypter(key);
-
 			byte[] plainblob = Encoding.UTF8.GetBytes(plaintext);
 
-			byte[] package = se.Package(plainblob);
-			byte[] newPlainblob = se.Unpackage(package);
+			// Test a->b
+			byte[] package1 = a.Encrypt(plainblob);
+			byte[] newPlainblob1 = b.Decrypt(package1);
+			string newPlaintext1 = Encoding.UTF8.GetString(newPlainblob1);
+			Assert.AreEqual(plaintext, newPlaintext1);
 
-			string newPlaintext = Encoding.UTF8.GetString(newPlainblob);
+			// Test a->b again
+			byte[] package2 = a.Encrypt(plainblob);
+			byte[] newPlainblob2 = b.Decrypt(package2);
+			string newPlaintext2 = Encoding.UTF8.GetString(newPlainblob2);
+			Assert.AreEqual(plaintext, newPlaintext2);
 
-			Assert.AreEqual(plaintext, newPlaintext);
+			// Test b->a
+			byte[] package3 = a.Encrypt(plainblob);
+			byte[] newPlainblob3 = b.Decrypt(package3);
+			string newPlaintext3 = Encoding.UTF8.GetString(newPlainblob3);
+			Assert.AreEqual(plaintext, newPlaintext3);
+
+			// Check that the packages are different
+			CollectionAssert.AreNotEqual(package1, package2);
 		}
 
 		[TestMethod]
 		public void RoundTrip_Empty()
 		{
-			byte[] key = SecureRandomGenerator.GetBytes(32);
-			using var se = new RatchetCrypter(key);
+			byte[] plainblob = new byte[0];
 
-			byte[] cipherblob = se.Package(new byte[0]);
-			byte[] newPlainblob = se.Unpackage(cipherblob);
+			// Test a->b
+			byte[] package1 = a.Encrypt(plainblob);
+			byte[] newPlainblob1 = b.Decrypt(package1);
+			CollectionAssert.AreEqual(plainblob, newPlainblob1);
 
-			CollectionAssert.AreEqual(newPlainblob, new byte[0]);
+			// Test a->b again
+			byte[] package2 = a.Encrypt(plainblob);
+			byte[] newPlainblob2 = b.Decrypt(package2);
+			CollectionAssert.AreEqual(plainblob, newPlainblob1);
+
+			// Test b->a
+			byte[] package3 = a.Encrypt(plainblob);
+			byte[] newPlainblob3 = b.Decrypt(package3);
+			CollectionAssert.AreEqual(plainblob, newPlainblob1);
+
+			// Check that the packages are different
+			CollectionAssert.AreNotEqual(package1, package2);
 		}
 	}
-	*/
 }

@@ -7,13 +7,10 @@ namespace NodeFindingTest
 	{
 		private static void Main(string[] args)
 		{
-			Network network = Node.network;
 			Console.WriteLine("creating...");
-			network.Add(25);
-			Console.WriteLine("waiting...");
-			Task.Delay(3000).Wait();
+			Network.AddNodes(10000);
 			Console.WriteLine("testing...");
-			network.TestAll();
+			Network.TestAll();
 		}
 	}
 }

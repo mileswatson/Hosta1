@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,53 +11,51 @@ using Hosta.Tools;
 
 namespace NodeFindingTest
 {
-	internal class Network
+	internal static class Network
 	{
-		private Dictionary<string, string> addressToID;
-		private Dictionary<string, Node> idToNode;
+		private static Dictionary<string, BitArray> addressToName = new Dictionary<string, BitArray>();
+		private static Dictionary<BitArray, Node> nameToNode = new Dictionary<BitArray, Node>();
 
-		public Network()
+		public static void AddNodes(int num)
 		{
-			addressToID = new Dictionary<string, string>();
-			idToNode = new Dictionary<string, Node>();
-		}
-
-		public void Add(int num)
-		{
+			//NodeReference firstNode = null;
 			for (int i = 0; i < num; i++)
 			{
 				Node n = new Node();
-				addressToID[n.reference.address] = n.reference.ID;
-				idToNode[n.reference.ID] = n;
-				if (idToNode.Count == 1) n.StartTableBuilder(new NodeReference());
+				addressToName[n.address] = n.name;
+				nameToNode[n.name] = n;
+				//n.BuildTable(firstNode);
+				//if (i == 0) firstNode = n.Reference;
+
+				if (nameToNode.Count == 1) n.BuildTable(null);
 				else
 				{
 					NodeReference nr;
 					do
 					{
 						nr = RandomReference();
-					} while (nr.ID == n.reference.ID);
-					n.StartTableBuilder(nr);
+					} while (nr.name == n.name);
+					n.BuildTable(nr);
 				}
 				Console.WriteLine(i);
-				Task.Delay(150).Wait();
 			}
 		}
 
-		public bool IsValidReference(NodeReference nf)
+		public static bool IsValidReference(NodeReference nr)
 		{
-			if (nf.ID == null || nf.address == null || !addressToID.ContainsKey(nf.address))
+			if (nr == null || nr.name == null
+				|| nr.address == null || !addressToName.ContainsKey(nr.address))
 			{
 				return false;
 			}
-			return addressToID[nf.address] == nf.ID;
+			return addressToName[nr.address] == nr.name;
 		}
 
-		public Node Get(NodeReference nf)
+		public static Node Get(NodeReference nf)
 		{
 			if (IsValidReference(nf))
 			{
-				return idToNode[nf.ID];
+				return nameToNode[nf.name];
 			}
 			else
 			{
@@ -64,28 +63,30 @@ namespace NodeFindingTest
 			}
 		}
 
-		public NodeReference RandomReference()
+		public static NodeReference RandomReference()
 		{
-			return idToNode.ElementAt(
-				SecureRandomGenerator.GetInt(0, idToNode.Count))
-				.Value.reference;
+			return nameToNode.ElementAt(
+				SecureRandomGenerator.GetInt(0, nameToNode.Count))
+				.Value.Reference;
 		}
 
-		public bool CanConnect(string a, string b)
+		public static bool AreConnected(Node a, Node b)
 		{
-			return idToNode[a].Find(b).address == idToNode[b].reference.address;
+			if (a == null | b == null) Console.WriteLine("VALUE WAS NULL!");
+			NodeReference nr = a.Find(b.name);
+			if (nr == null) return false;
+			return nr.Equals(b.Reference);
 		}
 
-		public void TestAll()
+		public static void TestAll()
 		{
 			int totalAttempts = 100;
 			int totalConnections = 0;
-			var list = idToNode.Keys.ToList();
 			for (int i = 0; i < totalAttempts; i++)
 			{
-				int a = SecureRandomGenerator.GetInt(0, list.Count);
-				int b = SecureRandomGenerator.GetInt(0, list.Count);
-				if (CanConnect(list[a], list[b])) totalConnections++;
+				Node a = nameToNode[RandomReference().name];
+				Node b = nameToNode[RandomReference().name];
+				if (AreConnected(a, b)) totalConnections++;
 			}
 			Console.WriteLine(totalConnections);
 			Console.WriteLine(totalAttempts);

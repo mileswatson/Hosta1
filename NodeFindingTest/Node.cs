@@ -3,157 +3,246 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
+using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Hosta.Crypto;
 using Hosta.Tools;
 
 namespace NodeFindingTest
 {
-	internal struct NodeReference
+	internal class NodeReference : IEquatable<NodeReference>
 	{
-		public string ID;
+		public BitArray name;
 		public string address;
+
+		public NodeReference()
+		{
+			this.name = null;
+			this.address = null;
+		}
+
+		public NodeReference(BitArray name, string address)
+		{
+			this.name = name;
+			this.address = address;
+		}
 
 		public override string ToString()
 		{
-			return "{" + ID + ":" + address + "}";
+			byte[] placeholder = new byte[32];
+			name.CopyTo(placeholder, 0);
+			return "{" + Transcoder.HexFromBytes(placeholder) + ":" + address + "}";
+		}
+
+		public bool Equals(NodeReference nr)
+		{
+			return name.Equals(nr.name) && address == nr.address;
+		}
+	}
+
+	internal class Bucket
+	{
+		private const int SIZE = 16;
+		private List<NodeReference> main = new List<NodeReference>();
+		private Queue<NodeReference> backup = new Queue<NodeReference>();
+
+		public int Size {
+			get { return main.Count; }
+		}
+
+		public Bucket()
+		{
+		}
+
+		public void Cleanup()
+		{
+			for (int i = 0; i < main.Count; i++)
+			{
+				if (!Network.IsValidReference(main[i])) main.RemoveAt(i);
+				i--;
+			}
+			while (main.Count != 16 && backup.Count > 0)
+			{
+				NodeReference nr = backup.Dequeue();
+				if (Network.IsValidReference(nr)) main.Add(nr);
+			}
+		}
+
+		public void AddReference(NodeReference newReference)
+		{
+			bool a = (main.Count < SIZE);
+			bool b = true;
+			foreach (NodeReference nr in main)
+			{
+				if (newReference.Equals(nr))
+				{
+					b = false;
+					break;
+				}
+			}
+			if (a && b)
+			{
+				main.Add(newReference);
+			}
+			else
+			{
+				foreach (NodeReference nr in backup)
+				{
+					if (newReference.Equals(nr)) return;
+				}
+				backup.Enqueue(newReference);
+				if (backup.Count > SIZE) backup.Dequeue();
+			}
+		}
+
+		public NodeReference GetClosest(BitArray name)
+		{
+			if (Size == 0) return null;
+			bool first = true;
+			BigInteger smallestDistance = BigInteger.Zero;
+			NodeReference closestReference = new NodeReference();
+			foreach (NodeReference nr in main)
+			{
+				BitArray clone = (BitArray)nr.name.Clone();
+				clone.Xor(name);
+				byte[] bytes = new byte[32];
+				clone.CopyTo(bytes, 0);
+				BigInteger size = new BigInteger(bytes, true, true);
+				if (first)
+				{
+					smallestDistance = size;
+					closestReference = nr;
+					first = false;
+				}
+				else if (size < smallestDistance)
+				{
+					smallestDistance = size;
+					closestReference = nr;
+				}
+			}
+			return closestReference;
+		}
+
+		public List<NodeReference> GetAllReferences()
+		{
+			return main;
+		}
+	}
+
+	internal class RoutingTable
+	{
+		public BitArray self;
+		public Bucket[] buckets = new Bucket[256];
+
+		public RoutingTable(BitArray self)
+		{
+			this.self = self;
+			for (int i = 0; i < 256; i++)
+			{
+				buckets[i] = new Bucket();
+			}
+		}
+
+		public void AddReference(NodeReference newReference)
+		{
+			int level = 0;
+			while (self[level] == newReference.name[level])
+			{
+				level++;
+				if (level == 256) return;
+			}
+			buckets[level].AddReference(newReference);
+		}
+
+		public NodeReference GetClosest(BitArray target)
+		{
+			int level = 0;
+			while (self[level] == target[level])
+			{
+				level++;
+				if (level == 256) return null;
+			}
+			return buckets[level].GetClosest(target);
+		}
+
+		public List<NodeReference> GetAllReferences()
+		{
+			List<NodeReference> all = new List<NodeReference>();
+			foreach (Bucket bucket in buckets)
+			{
+				all.AddRange(bucket.GetAllReferences());
+			}
+			return all;
 		}
 	}
 
 	internal class Node
 	{
-		private const int ID_BYTES = 32;
-		public static Network network = new Network();
+		private const int NAME_BITS = 32;
 
-		private static char[] hexchars = "0123456789abcdef".ToCharArray();
+		public BitArray name;
+		public string address;
 
-		public NodeReference reference;
-		public NodeReference[,] table = new NodeReference[ID_BYTES, 16];
+		public RoutingTable table;
 
-		public ConcurrentQueue<NodeReference> newNodeQueue = new ConcurrentQueue<NodeReference>();
+		public NodeReference Reference {
+			get { return new NodeReference(name, address); }
+		}
 
 		public Node()
 		{
-			byte[] temp = SecureRandomGenerator.GetBytes(ID_BYTES);
-			reference.ID = Transcoder.HexFromBytes(temp);
-			reference.address = Transcoder.HexFromBytes(SecureRandomGenerator.GetBytes(32));
-			for (int i = 0; i < ID_BYTES; i++)
-			{
-				int j = Array.FindIndex(hexchars, c => c == reference.ID[i]);
-				table[i, j] = reference;
-			}
+			name = new BitArray(SecureRandomGenerator.GetBytes(32));
+			address = Transcoder.HexFromBytes(SecureRandomGenerator.GetBytes(32));
+			table = new RoutingTable(name);
 		}
 
-		public NodeReference GetClosestReference(string ID)
+		public NodeReference GetClosest(BitArray name)
 		{
-			for (int i = 0; i < ID_BYTES; i++)
-			{
-				if (ID[i] == reference.ID[i]) continue;
-				int index = Array.FindIndex(hexchars, c => c == ID[i]);
-				return table[i, index];
-			}
-			return reference;
+			return table.GetClosest(name);
 		}
 
-		public NodeReference Find(string ID)
+		public void AddReference(NodeReference newReference)
 		{
-			Node n = this;
-			while (n != null)
-			{
-				if (n.reference.ID == ID) return n.reference;
-				n = network.Get(n.GetClosestReference(ID));
-			}
-			return new NodeReference();
+			table.AddReference(newReference);
 		}
 
-		private void CleanupTable()
+		public List<NodeReference> GetAllReferences()
 		{
-			for (int i = 0; i < ID_BYTES; i++)
-			{
-				for (int j = 0; j < 16; j++)
-				{
-					if (table[i, j].ID != null
-						&& table[i, j].ID != reference.ID
-						&& !network.IsValidReference(table[i, j]))
-					{
-						table[i, j].ID = null;
-						table[i, j].address = null;
-					}
-				}
-			}
+			return table.GetAllReferences();
 		}
 
-		public void AddToTable(NodeReference nr)
+		public void BuildTable(NodeReference current)
 		{
-			for (int i = 0; i < ID_BYTES; i++)
-			{
-				if (nr.ID[i] == reference.ID[i]) continue;
-				int index = Array.FindIndex(hexchars, c => c == nr.ID[i]);
-				if (table[i, index].ID != null) table[i, index] = nr;
-			}
-		}
-
-		public async void StartTableBuilder(NodeReference current)
-		{
-			while (current.ID != null && current.address != null)
-			{
-				Node n = network.Get(current);
-				Console.WriteLine(current);
-				n.AddToTable(reference);
-				int level = 0;
-				do
-				{
-					if (level == ID_BYTES / 2) break;
-					int skipVal = Array.FindIndex(hexchars, c => c == reference.ID[level]);
-					for (int value = 0; value < 16; value++)
-					{
-						if (value == skipVal) continue;
-						if (n.table[level, value].ID != null)
-						{
-							table[level, value] = n.table[level, value];
-						}
-					}
-					level++;
-				} while (reference.ID[level - 1] == n.reference.ID[level - 1]);
-				current = n.GetClosestReference(reference.ID);
-				if (current.ID == n.reference.ID) break;
-			}
 			while (true)
 			{
-				Queue<NodeReference> builderQueue = new Queue<NodeReference>();
-				CleanupTable();
-				foreach (NodeReference nr in table)
+				if (!Network.IsValidReference(current) || current.Equals(Reference)) return;
+				Node n = Network.Get(current);
+				foreach (NodeReference nr in n.GetAllReferences())
 				{
-					if (nr.ID != null && nr.ID != reference.ID)
-						builderQueue.Enqueue(nr);
+					AddReference(nr);
 				}
-				while (builderQueue.Count > 0)
-				{
-					var n = network.Get(builderQueue.Dequeue());
-					if (n == null) continue;
-					int level = 0;
-					do
-					{
-						for (int value = 0; value < 16; value++)
-						{
-							if (table[level, value].ID == null)
-							{
-								NodeReference nr = n.table[level, value];
-								if (nr.ID != null)
-								{
-									table[level, value] = nr;
-									network.Get(nr).AddToTable(reference);
-								}
-							}
-						}
-						level++;
-					} while (reference.ID[level - 1] == n.reference.ID[level - 1]);
-				}
-				await Task.Delay(SecureRandomGenerator.GetInt(100, 150));
+				current = n.GetClosest(name);
+				n.AddReference(Reference);
 			}
+		}
+
+		public NodeReference Find(BitArray target)
+		{
+			if (target.Equals(name)) return Reference;
+			NodeReference current = GetClosest(target);
+			while (Network.IsValidReference(current) && !current.Equals(Reference))
+			{
+				if (current.name.Equals(target)) return current;
+				Node n = Network.Get(current);
+				current = n.GetClosest(target);
+			}
+			return null;
 		}
 	}
 }

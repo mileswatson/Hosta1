@@ -1,12 +1,19 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace NodeFindingTest
 {
-	class Program
+	internal class Program
 	{
-		static void Main(string[] args)
+		private static void Main(string[] args)
 		{
-			Console.WriteLine("Hello World!");
+			Network network = Node.network;
+			Console.WriteLine("creating...");
+			network.Add(25);
+			Console.WriteLine("waiting...");
+			Task.Delay(3000).Wait();
+			Console.WriteLine("testing...");
+			network.TestAll();
 		}
 	}
 }

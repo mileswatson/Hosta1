@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System;
+using System.Security.Cryptography;
 
 namespace Hosta.Crypto
 {
@@ -19,6 +20,22 @@ namespace Hosta.Crypto
 			byte[] randombytes = new byte[size];
 			rng.GetBytes(randombytes);
 			return randombytes;
+		}
+
+		/// <summary>
+		/// Generates a number x such that
+		/// minimum <= x < maximum
+		/// </summary>
+		/// <param name="minimum"></param>
+		/// <param name="maximum"></param>
+		/// <returns></returns>
+		public static int GetInt(int minimum, int maximum)
+		{
+			var rng = RandomNumberGenerator.Create();
+			byte[] randombytes = GetBytes(4);
+			int x = BitConverter.ToInt32(randombytes);
+			x = x < 0 ? -x : x;
+			return (x % maximum - minimum) + minimum;
 		}
 	}
 }

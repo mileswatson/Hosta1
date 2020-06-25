@@ -74,14 +74,14 @@ namespace Hosta.Net
 		/// </summary>
 		/// <param name="data">The message to encrypt and send.</param>
 		/// <returns>An awaitable task.</returns>
-		public async Task Send(byte[] data)
+		public Task Send(byte[] data)
 		{
 			ThrowIfDisposed();
 			await accessQueue.GetPass();
 			try
 			{
 				byte[] secureMessage = crypter.Encrypt(data);
-				await insecureConversation.Send(secureMessage);
+				return insecureConversation.Send(secureMessage);
 			}
 			catch (Exception e)
 			{

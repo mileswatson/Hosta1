@@ -81,7 +81,7 @@ namespace Hosta.Net
 			try
 			{
 				byte[] secureMessage = crypter.Encrypt(data);
-				return insecureConversation.Send(secureMessage);
+				await insecureConversation.Send(secureMessage);
 			}
 			catch (Exception e)
 			{

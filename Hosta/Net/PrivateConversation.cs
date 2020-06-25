@@ -74,7 +74,7 @@ namespace Hosta.Net
 		/// </summary>
 		/// <param name="data">The message to encrypt and send.</param>
 		/// <returns>An awaitable task.</returns>
-		public Task Send(byte[] data)
+		public async Task Send(byte[] data)
 		{
 			ThrowIfDisposed();
 			await accessQueue.GetPass();

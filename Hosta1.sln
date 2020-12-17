@@ -13,7 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosta", "Hosta\Hosta.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HostaTests", "HostaTests\HostaTests.csproj", "{C99E628F-AE65-46CA-98BB-C44AD850B165}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NodeFindingTest", "NodeFindingTest\NodeFindingTest.csproj", "{C226AE2C-804C-40D4-8133-17BFE2951B3A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeFindingTest", "NodeFindingTest\NodeFindingTest.csproj", "{C226AE2C-804C-40D4-8133-17BFE2951B3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqliteNetTest", "SqliteNetTest\SqliteNetTest.csproj", "{C32E3392-BC63-443D-AA19-92626287F6A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +47,10 @@ Global
 		{C226AE2C-804C-40D4-8133-17BFE2951B3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C226AE2C-804C-40D4-8133-17BFE2951B3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C226AE2C-804C-40D4-8133-17BFE2951B3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C32E3392-BC63-443D-AA19-92626287F6A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C32E3392-BC63-443D-AA19-92626287F6A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C32E3392-BC63-443D-AA19-92626287F6A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C32E3392-BC63-443D-AA19-92626287F6A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

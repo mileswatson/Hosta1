@@ -5,13 +5,11 @@
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:local="clr-namespace:UI"
 		mc:Ignorable="d"
-		Title="MainWindow" Height="450" Width="800">
+		Title="Hosta" Height="450" Width="800">
 	<Grid>
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="30" />
-			<ColumnDefinition Width="auto" />
-			<ColumnDefinition Width="auto" />
-			<ColumnDefinition Width="auto" />
+			<ColumnDefinition Width="*" />
 			<ColumnDefinition Width="auto" />
 			<ColumnDefinition Width="*" />
 			<ColumnDefinition Width="30" />
@@ -23,12 +21,8 @@
 			<RowDefinition Height="*" />
 			<RowDefinition Height="30" />
 		</Grid.RowDefinitions>
-
-		<TextBox x:Name="dataEntry" Grid.Row="1" Grid.Column="1" MinWidth="50" MaxWidth="200" Margin="15, 0" />
-		<Button x:Name="addButton" Grid.Row="1" Grid.Column="2" Content="Add" Margin="15, 0" />
-		<Button x:Name="removeButton" Grid.Row="1" Grid.Column="3" Content="Remove" Margin="15, 0" />
-		<Button x:Name="showButton" Grid.Row="1" Grid.Column="4" Content="Show" Margin="15,0,15,0" Height="20" Grid.RowSpan="2" VerticalAlignment="Top" Click="ShowButton_Click" />
-
-		<TextBlock x:Name="dataDisplay" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Text="" />
+		<ScrollViewer Grid.Row="2" Grid.Column="2" MinWidth="500" Grid.RowSpan="2">
+			<StackPanel Orientation="Vertical" Height="auto" Width="auto" x:Name="posts" />
+		</ScrollViewer>
 	</Grid>
 </Window>

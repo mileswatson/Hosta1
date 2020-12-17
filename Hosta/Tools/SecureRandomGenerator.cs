@@ -31,7 +31,6 @@ namespace Hosta.Crypto
 		/// <returns></returns>
 		public static int GetInt(int minimum, int maximum)
 		{
-			var rng = RandomNumberGenerator.Create();
 			byte[] randombytes = GetBytes(4);
 			int x = BitConverter.ToInt32(randombytes);
 			x = x < 0 ? -x : x;

@@ -21,6 +21,10 @@ namespace LearningWPF
 	/// </summary>
 	public partial class MainWindow : Window
 	{
+		private PostsViewModel postsVM = new PostsViewModel();
+
+		private ProfileViewModel profileVM = new ProfileViewModel();
+
 		public MainWindow()
 		{
 			InitializeComponent();
@@ -28,12 +32,12 @@ namespace LearningWPF
 
 		private void Posts_Clicked(object sender, RoutedEventArgs e)
 		{
-			DataContext = new PostsViewModel();
+			DataContext = postsVM;
 		}
 
 		private void Profile_Clicked(object sender, RoutedEventArgs e)
 		{
-			DataContext = new ProfileViewModel();
+			DataContext = profileVM;
 		}
 	}
 }

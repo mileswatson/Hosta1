@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HostaTests", "HostaTests\Ho
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeFindingTest", "NodeFindingTest\NodeFindingTest.csproj", "{C226AE2C-804C-40D4-8133-17BFE2951B3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqliteNetTest", "SqliteNetTest\SqliteNetTest.csproj", "{C32E3392-BC63-443D-AA19-92626287F6A1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqliteNetTest", "SqliteNetTest\SqliteNetTest.csproj", "{C32E3392-BC63-443D-AA19-92626287F6A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LearningWPF", "LearningWPF\LearningWPF.csproj", "{DECBE465-46E9-4135-ADB7-D734CCE48D4E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{C32E3392-BC63-443D-AA19-92626287F6A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C32E3392-BC63-443D-AA19-92626287F6A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C32E3392-BC63-443D-AA19-92626287F6A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DECBE465-46E9-4135-ADB7-D734CCE48D4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DECBE465-46E9-4135-ADB7-D734CCE48D4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DECBE465-46E9-4135-ADB7-D734CCE48D4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DECBE465-46E9-4135-ADB7-D734CCE48D4E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
